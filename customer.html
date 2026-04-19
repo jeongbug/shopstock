@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>제품 조회</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto Sans+KR:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
   --gold:#B8860B;--gold-light:#D4A843;--gold-pale:#FDF6E3;--gold-border:#E8D5A3;
@@ -43,8 +43,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .result-img-wrap img{width:100%;height:100%;object-fit:cover}
 .result-img-placeholder{font-size:64px;opacity:.4}
 .result-body{padding:20px}
+.result-id{font-size:13px;color:var(--text2);margin-bottom:4px}
 .result-model{font-size:22px;font-weight:700;letter-spacing:-0.5px}
 .result-price{font-size:32px;font-weight:700;color:var(--gold);margin-top:6px;letter-spacing:-1px}
+.result-stones{font-size:13px;color:var(--text2);margin-top:8px}
 .result-note{font-size:13px;color:var(--text2);margin-top:12px;line-height:1.7;padding-top:12px;border-top:1px solid var(--border)}
 .result-updated{font-size:11px;color:var(--text3);margin-top:10px}
 .not-found{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:40px 20px;text-align:center;color:var(--text2)}
@@ -70,9 +72,9 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   </div>
   <div class="search-wrap">
     <div class="search-box">
-      <span class="search-label">모델번호를 입력하세요</span>
+      <span class="search-label">제품 번호를 입력하세요</span>
       <div class="search-row">
-        <input type="text" id="search-inp" placeholder="예: RG-24K-001" onkeydown="if(event.key==='Enter')doSearch()" autocomplete="off" />
+        <input type="text" id="search-inp" placeholder="예: 10001" onkeydown="if(event.key==='Enter')doSearch()" autocomplete="off" />
         <button class="btn-search" onclick="doSearch()">조회</button>
       </div>
     </div>
@@ -80,7 +82,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   <div class="result-wrap">
     <div id="result-area">
       <div class="guide">
-        <p>제품 태그에 적힌 모델번호를 입력하시면<br>제품 사진과 가격을 확인하실 수 있습니다.</p>
+        <p>제품 태그에 적힌 번호를 입력하시면<br>제품 사진과 가격을 확인하실 수 있습니다.</p>
       </div>
     </div>
   </div>
@@ -88,14 +90,14 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 </div>
 
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbwAhh2lD6j4N-Jj9KkZfzeBj9QnFgisU3dsj6JpGsICds5eijXFe3qCrFH1v9LSk5M_/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwzsdweJGiRr900BTlLGYJVy2bGibg_JenSFoddT3mfOXs97oTtNJyGICmcPVrPSgccNg/exec';
 const API_KEY = 'customer';
 
 function doSearch(){
   const q = document.getElementById('search-inp').value.trim();
   const el = document.getElementById('result-area');
   if(!q){
-    el.innerHTML='<div class="guide"><p>모델번호를 입력하세요.</p></div>';
+    el.innerHTML='<div class="guide"><p>제품 번호를 입력하세요.</p></div>';
     return;
   }
   el.innerHTML='<div class="loading">조회 중...</div>';
@@ -103,19 +105,23 @@ function doSearch(){
   fetch(url).then(r=>r.json()).then(data=>{
     if(data.status==='ok'){
       const p = data.data;
+      const stones = [p.main_stone, p.sub_stone].filter(Boolean).join(', ');
       el.innerHTML=`
         <div class="result-card">
           <div class="result-img-wrap">
-            ${p.img
-              ?`<img src="${p.img}" alt="${p.model}" onerror="this.parentElement.innerHTML='<div class=result-img-placeholder>💍</div>'">`
+            ${p.photo
+              ?`<img src="${p.photo}" alt="" onerror="this.parentElement.innerHTML='<div class=result-img-placeholder>💍</div>'">`
               :'<div class="result-img-placeholder">💍</div>'
             }
           </div>
           <div class="result-body">
-            <div class="result-model">${p.model}</div>
-            <div class="result-price">₩${Number(p.price).toLocaleString()}</div>
-            ${p.note?`<div class="result-note">${p.note}</div>`:''}
-            <div class="result-updated">업데이트: ${p.updated}</div>
+            <div class="result-id">No. ${p.customer_id}</div>
+            <div class="result-model">${p.category||''} ${stones?'— '+stones:''}</div>
+            <div class="result-price">₩${Number(p.sale_price||0).toLocaleString()}</div>
+            ${p.title?`<div class="result-stones" style="margin-top:8px;font-weight:500">${p.title}</div>`:''}
+            ${p.artist?`<div class="result-stones">${p.artist}</div>`:''}
+            ${p.description?`<div class="result-note">${p.description}</div>`:''}
+            <div class="result-updated">업데이트: ${p.updated_date||''}</div>
           </div>
         </div>`;
     } else {
