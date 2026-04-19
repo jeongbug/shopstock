@@ -242,7 +242,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     </div>
     <div class="form-group">
       <label>비밀번호</label>
-<input type="url" id="cfg-url" placeholder="https://script.google.com/macros/s/.../exec" onkeydown="if(event.key==='Enter')doLogin()" />    </div>
+      <input type="password" id="cfg-key" placeholder="관리자 또는 직원 비밀번호" />
+    </div>
     <button class="btn-primary" onclick="doLogin()">로그인</button>
     <div class="login-status" id="login-status"></div>
   </div>
@@ -380,19 +381,16 @@ function doLogin(){
   const st=document.getElementById('login-status');
   if(!url||!key){st.className='login-status s-err';st.textContent='URL과 비밀번호를 입력하세요';return;}
   st.className='login-status s-loading';st.textContent='로그인 중...';
-  fetch(url+'?key='+encodeURIComponent(key)+'&action=getStats')
-    .then(r=>r.json()).then(data=>{
-      if(data.status==='ok'){
+  fetch(url+'?key='+encodeURIComponent(key)+'&action=getRole')
+    .then(r=>r.json()).then(roleData=>{
+      if(roleData.status==='ok'){
+        userRole=roleData.role;
         cfg={url,key};
         localStorage.setItem('jw_admin_cfg',JSON.stringify(cfg));
-        // 관리자/직원 구분 (getStats 성공하면 일단 접속 허용)
-        userRole = 'staff'; // 기본값
-        // admin key로 추가 확인
-        fetch(url+'?key='+encodeURIComponent(key)+'&action=toggleVisible&sheet=Rokuzan&id=test')
-          .then(r=>r.json()).then(d=>{
-            if(d.message !== 'Admin only') userRole='admin';
-            showMain(data.data);
-          }).catch(()=>showMain(data.data));
+        fetch(url+'?key='+encodeURIComponent(key)+'&action=getStats')
+          .then(r=>r.json()).then(data=>{
+            if(data.status==='ok') showMain(data.data);
+          });
       } else {
         st.className='login-status s-err';st.textContent='비밀번호가 틀렸습니다';
       }
@@ -858,11 +856,14 @@ function doSearch(){
 
 // 저장된 설정 있으면 자동 로그인 시도
 if(cfg.url&&cfg.key){
-  fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&action=getStats')
-    .then(r=>r.json()).then(data=>{
-      if(data.status==='ok'){
-        userRole='staff';
-        showMain(data.data);
+  fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&action=getRole')
+    .then(r=>r.json()).then(roleData=>{
+      if(roleData.status==='ok'){
+        userRole=roleData.role;
+        fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&action=getStats')
+          .then(r=>r.json()).then(data=>{
+            if(data.status==='ok') showMain(data.data);
+          });
       }
     }).catch(()=>{});
 }
