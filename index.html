@@ -237,9 +237,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   <div class="login-card">
     <h2>로그인</h2>
     <div class="form-group">
-      <label>Apps Script URL</label>
-      <input type="url" id="cfg-url" placeholder="https://script.google.com/macros/s/.../exec" />
-    </div>
+      <label>Apps Script </label>
+      <input type="url" id="cfg-url" placeholder="https://script.google.com/macros/s/.../exec" onkeydown="if(event.key==='Enter')doLogin()" />    </div>
     <div class="form-group">
       <label>비밀번호</label>
       <input type="password" id="cfg-key" placeholder="관리자 또는 직원 비밀번호" />
