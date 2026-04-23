@@ -761,7 +761,7 @@ function renderList(){
 }
 
 function toggleSel(id,cb){
-  cconst p=products.find(x=>String(x.customer_id)===String(id));
+  const p=products.find(x=>String(x.customer_id)===String(id));
   if(p)p.selected=cb.checked;
   updateSelCount();
 }
@@ -800,7 +800,7 @@ function applyAdjust(){
 }
 
 function openDetail(id){
-  const p=products.find(x=>x.customer_id===id);if(!p)return;
+  const p=products.find(x=>String(x.customer_id)===String(id));if(!p)return;
   document.getElementById('modal-title').textContent=p.customer_id;
   const fields=[
     {l:'고객번호',v:p.customer_id},
