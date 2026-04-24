@@ -922,8 +922,8 @@ function loadGoldPrice(){
   if(cached){
     const data=JSON.parse(cached);
     renderGoldPrice(data, el);
-    // 오늘 날짜 캐시면 API 호출 생략
-    if(data.date===today) return;
+    // 캐시 있으면 항상 API 호출 생략
+    return;
     // 어제 데이터면 "이전 시세" 표시 후 백그라운드 업데이트
     el.style.opacity='0.6';
   } else {
