@@ -192,13 +192,10 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   </div>
   <div class="login-card">
     <h2>로그인</h2>
-    <div class="form-group">
-      <label>Apps Script URL</label>
-      <input type="url" id="cfg-url" placeholder="https://script.google.com/macros/s/.../exec" onkeydown="if(event.key==='Enter')doLogin()" />
-    </div>
+    <input type="hidden" id="cfg-url" value="https://script.google.com/macros/s/AKfycbzOZJk0T8BZS2OKfS8eYm5Ras0cqvnU8vjVIUQDhNdp9WkuU3jwjDHpgfOODV4kRm1MQw/exec" />
     <div class="form-group">
       <label>비밀번호</label>
-      <input type="password" id="cfg-key" placeholder="관리자 또는 직원 비밀번호" onkeydown="if(event.key==='Enter')doLogin()" />
+      <input type="password" id="cfg-key" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()" />
     </div>
     <button class="btn-primary" onclick="doLogin()">로그인</button>
     <div class="login-status" id="login-status"></div>
