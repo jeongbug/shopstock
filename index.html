@@ -570,8 +570,13 @@ function showMain(stats){
   ms.style.display='flex';ms.style.flexDirection='column';
   renderStats(stats);
   renderRegForm(currentRegSheet);
+  // 캐시에서 즉시 금 시세 표시
+  const cached=localStorage.getItem('gold_price_cache');
+  if(cached){
+    const el=document.getElementById('gold-price-display');
+    if(el) renderGoldPrice(JSON.parse(cached), el);
+  }
   setTimeout(()=>loadGoldPrice(), 300);
-}
 }
 
 function showLogin(){
@@ -924,8 +929,8 @@ function loadGoldPrice(){
   if(cached){
     const data=JSON.parse(cached);
     renderGoldPrice(data, el);
-    // 캐시 있으면 항상 API 호출 생략
-    return;
+    // 오늘 날짜 캐시면 API 호출 생략
+    if(data.date===today) return;
     // 어제 데이터면 "이전 시세" 표시 후 백그라운드 업데이트
     el.style.opacity='0.6';
   } else {
