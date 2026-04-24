@@ -563,8 +563,8 @@ function showMain(stats){
   ms.style.display='flex';ms.style.flexDirection='column';
   renderStats(stats);
   renderRegForm(currentRegSheet);
+  setTimeout(()=>loadGoldPrice(), 50);
 }
-
 function showLogin(){
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('main-screen').style.display='none';
