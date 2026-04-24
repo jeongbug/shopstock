@@ -551,29 +551,46 @@ function doLogin(){
   if(cachedAuth){
     const auth=JSON.parse(cachedAuth);
     if(auth.key===key){
-      // 캐시된 role로 즉시 로그인
       userRole=auth.role;
       cfg={url,key};
       localStorage.setItem('jw_admin_cfg',JSON.stringify(cfg));
-      st.className='login-status s-loading';st.textContent='로그인 중...';
-      // getStats만 호출 (getRole 생략)
-      fetch(url+'?key='+encodeURIComponent(key)+'&action=getStats')
-        .then(r=>r.json()).then(data=>{
-          if(data.status==='ok'){
-            showMain(data.data);
-            // 백그라운드에서 role 재확인
-            fetch(url+'?key='+encodeURIComponent(key)+'&action=getRole')
-              .then(r=>r.json()).then(rd=>{
-                if(rd.status==='ok') localStorage.setItem('jw_auth_cache',JSON.stringify({key,role:rd.role}));
-              }).catch(()=>{});
-          } else {
-            // 비밀번호 변경된 경우
-            localStorage.removeItem('jw_auth_cache');
-            st.className='login-status s-err';st.textContent='비밀번호가 틀렸습니다';
-          }
-        }).catch(()=>{
-          st.className='login-status s-err';st.textContent='연결 실패';
-        });
+
+      // 캐시된 통계로 즉시 로그인
+      const cachedStats=localStorage.getItem('jw_stats_cache');
+      if(cachedStats){
+        showMain(JSON.parse(cachedStats));
+        // 백그라운드에서 최신 통계 업데이트
+        fetch(url+'?key='+encodeURIComponent(key)+'&action=getStats')
+          .then(r=>r.json()).then(data=>{
+            if(data.status==='ok'){
+              localStorage.setItem('jw_stats_cache',JSON.stringify(data.data));
+              renderStats(data.data);
+            } else {
+              localStorage.removeItem('jw_auth_cache');
+            }
+          }).catch(()=>{});
+      } else {
+        // 통계 캐시 없으면 API 호출
+        st.className='login-status s-loading';st.textContent='로그인 중...';
+        fetch(url+'?key='+encodeURIComponent(key)+'&action=getStats')
+          .then(r=>r.json()).then(data=>{
+            if(data.status==='ok'){
+              localStorage.setItem('jw_stats_cache',JSON.stringify(data.data));
+              showMain(data.data);
+            } else {
+              localStorage.removeItem('jw_auth_cache');
+              st.className='login-status s-err';st.textContent='비밀번호가 틀렸습니다';
+            }
+          }).catch(()=>{
+            st.className='login-status s-err';st.textContent='연결 실패';
+          });
+      }
+
+      // 백그라운드에서 role 재확인
+      fetch(url+'?key='+encodeURIComponent(key)+'&action=getRole')
+        .then(r=>r.json()).then(rd=>{
+          if(rd.status==='ok') localStorage.setItem('jw_auth_cache',JSON.stringify({key,role:rd.role}));
+        }).catch(()=>{});
       return;
     }
   }
@@ -589,7 +606,10 @@ function doLogin(){
         localStorage.setItem('jw_auth_cache',JSON.stringify({key,role:roleData.role}));
         fetch(url+'?key='+encodeURIComponent(key)+'&action=getStats')
           .then(r=>r.json()).then(data=>{
-            if(data.status==='ok') showMain(data.data);
+            if(data.status==='ok'){
+              localStorage.setItem('jw_stats_cache',JSON.stringify(data.data));
+              showMain(data.data);
+            }
           });
       } else {
         st.className='login-status s-err';st.textContent='비밀번호가 틀렸습니다';
