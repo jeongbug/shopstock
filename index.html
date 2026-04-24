@@ -357,6 +357,13 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
   <!-- 카탈로그 -->
   <div class="view" id="view-catalog">
     <p class="page-title">카탈로그</p>
+
+    <!-- 소매/도매 탭 -->
+    <div style="display:flex;gap:6px;margin-bottom:12px">
+      <button id="catalog-retail-btn" onclick="selectCatalogChannel('retail')" style="flex:1;padding:9px;font-size:13px;font-weight:700;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#fff;cursor:pointer">소매 카탈로그</button>
+      <button id="catalog-wholesale-btn" onclick="selectCatalogChannel('wholesale')" style="flex:1;padding:9px;font-size:13px;font-weight:700;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--panel);color:var(--text2);cursor:pointer">도매 카탈로그</button>
+    </div>
+
     <div class="catalog-toolbar">
       <div class="sheet-tabs" style="margin-bottom:0">
         <div class="sheet-tab active" onclick="selectCatalogSheet(this,'Rokuzan')">Rokuzan</div>
@@ -367,7 +374,8 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <div class="catalog-toolbar">
       <div class="catalog-price-toggle">
         <label>가격 표시:</label>
-        <select id="catalog-price-type" onchange="renderCatalog()">
+        <select id="catalog-price-type" onchange="loadCatalog()">
+          <option value="auto">자동</option>
           <option value="sale_price">소비자가</option>
           <option value="wholesale_price">도매가</option>
           <option value="none">가격 숨김</option>
@@ -1449,6 +1457,22 @@ function searchBatchPrice(){
 // ================================
 // 카탈로그
 // ================================
+let currentCatalogChannel='retail';
+
+function selectCatalogChannel(channel){
+  currentCatalogChannel=channel;
+  const rBtn=document.getElementById('catalog-retail-btn');
+  const wBtn=document.getElementById('catalog-wholesale-btn');
+  if(channel==='retail'){
+    rBtn.style.cssText='flex:1;padding:9px;font-size:13px;font-weight:700;border:none;border-radius:var(--radius-sm);background:var(--gold);color:#fff;cursor:pointer';
+    wBtn.style.cssText='flex:1;padding:9px;font-size:13px;font-weight:700;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--panel);color:var(--text2);cursor:pointer';
+  } else {
+    wBtn.style.cssText='flex:1;padding:9px;font-size:13px;font-weight:700;border:none;border-radius:var(--radius-sm);background:#1A3A6B;color:#fff;cursor:pointer';
+    rBtn.style.cssText='flex:1;padding:9px;font-size:13px;font-weight:700;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--panel);color:var(--text2);cursor:pointer';
+  }
+  loadCatalog();
+}
+
 function selectCatalogSheet(el,sheet){
   document.querySelectorAll('#view-catalog .sheet-tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
@@ -1461,34 +1485,40 @@ function loadCatalog(){
   el.innerHTML='<div class="loading-state">불러오는 중...</div>';
   api({action:'getAll',sheet:currentCatalogSheet}).then(data=>{
     if(data.status==='ok'){
-      const items=data.data.filter(p=>p.visible_retail==='Y');
+      const visField=currentCatalogChannel==='retail'?'visible_retail':'visible_wholesale';
+      const items=data.data.filter(p=>p[visField]==='Y');
       renderCatalogItems(items);
     }
   });
 }
 
-function renderCatalog(){
-  const items=document.querySelectorAll('.catalog-item');
-  const priceType=document.getElementById('catalog-price-type').value;
-  // 현재 표시된 카탈로그 아이템들의 가격 업데이트
-  loadCatalog();
-}
+function renderCatalog(){loadCatalog();}
 
 function renderCatalogItems(items){
   const el=document.getElementById('catalog-grid');
   const priceType=document.getElementById('catalog-price-type').value;
   if(!items.length){el.innerHTML='<div class="empty-state"><div class="empty-icon">💍</div>노출중인 제품이 없습니다</div>';return;}
-  el.innerHTML=items.map(p=>`
+  el.innerHTML=items.map(p=>{
+    let price=0;
+    if(priceType==='auto'){
+      price=currentCatalogChannel==='retail'?(p.sale_price||0):(p.wholesale_price||p.sale_price||0);
+    } else if(priceType==='sale_price'){
+      price=p.sale_price||0;
+    } else if(priceType==='wholesale_price'){
+      price=p.wholesale_price||0;
+    }
+    return `
     <div class="catalog-item">
       <input type="checkbox" class="catalog-check" checked />
       <div class="catalog-img">${p.photo?`<img src="${p.photo}" alt="" onerror="this.parentElement.innerHTML='💍'">`:'💍'}</div>
       <div class="catalog-body">
         <div class="catalog-id">No. ${p.customer_id}</div>
         <div class="catalog-cat">${p.category||''} ${p.main_stone?'— '+p.main_stone:''}</div>
-        ${priceType!=='none'?`<div class="catalog-price">₩${Number(p[priceType]||p.sale_price||0).toLocaleString()}</div>`:''}
+        ${priceType!=='none'?`<div class="catalog-price">₩${Number(price).toLocaleString()}</div>`:''}
         ${p.description?`<div class="catalog-note">${p.description}</div>`:''}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function exportCatalog(){
