@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>도매 제품 조회</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --blue:#1A3A6B;--blue-light:#2A5299;--blue-pale:#EEF2FF;--blue-border:#C5D0E8;
+  --bg:#F5F7FA;--panel:#FFFFFF;--surface:#EEF2FF;
+  --text:#1A1F2E;--text2:#4A5568;--text3:#8A9AB5;
+  --border:#D8E0EE;--border2:#C5D0E8;
+  --radius:12px;--radius-sm:8px;
+}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+#app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+
+/* 로그인 */
+.login-screen{flex:1;display:flex;flex-direction:column;justify-content:center;padding:24px}
+.login-logo{text-align:center;margin-bottom:32px}
+.login-logo h1{font-size:22px;font-weight:700;color:var(--blue)}
+.login-logo p{font-size:13px;color:var(--text2);margin-top:4px}
+.login-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:24px}
+.login-card h2{font-size:15px;font-weight:700;margin-bottom:16px}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:5px}
+.form-group input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:14px;font-family:'Noto Sans KR',sans-serif;outline:none;transition:border-color .2s}
+.form-group input:focus{border-color:var(--blue)}
+.btn-login{width:100%;padding:12px;background:var(--blue);border:none;border-radius:var(--radius-sm);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:background .2s}
+.btn-login:hover{background:var(--blue-light)}
+.login-status{font-size:12px;margin-top:10px;text-align:center;min-height:16px;font-weight:500}
+.s-ok{color:#27AE60}.s-err{color:#C0392B}.s-loading{color:var(--text2)}
+
+/* 헤더 */
+.header{background:var(--blue);padding:16px 20px;text-align:center;position:sticky;top:0;z-index:10}
+.header-logo{font-size:11px;letter-spacing:3px;color:rgba(255,255,255,.6);text-transform:uppercase;margin-bottom:2px}
+.header-title{font-size:18px;font-weight:700;color:#fff}
+.header-subtitle{font-size:11px;color:rgba(255,255,255,.7);margin-top:2px}
+
+/* 검색 */
+.search-wrap{padding:20px}
+.search-box{background:var(--panel);border:1px solid var(--border2);border-radius:var(--radius);padding:16px}
+.search-label{font-size:13px;font-weight:500;color:var(--text2);margin-bottom:8px;display:block}
+.search-row{display:flex;gap:8px}
+.search-row input{flex:1;padding:11px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-size:15px;font-family:'Noto Sans KR',sans-serif;outline:none;-webkit-appearance:none}
+.search-row input:focus{border-color:var(--blue)}
+.btn-search{padding:11px 16px;background:var(--blue);border:none;border-radius:var(--radius-sm);color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:'Noto Sans KR',sans-serif;white-space:nowrap}
+
+/* 결과 */
+.result-wrap{padding:0 20px 32px}
+.result-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.result-img-wrap{width:100%;height:260px;background:var(--blue-pale);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.result-img-wrap img{width:100%;height:100%;object-fit:cover}
+.result-img-placeholder{font-size:56px;opacity:.3}
+.no-save-overlay{position:absolute;inset:0;background:transparent;z-index:5}
+.result-body{padding:18px}
+.result-id{font-size:12px;color:var(--text3);margin-bottom:4px;font-family:monospace}
+.result-cat{font-size:16px;font-weight:700;letter-spacing:-0.3px}
+.result-stones{font-size:13px;color:var(--text2);margin-top:4px}
+.price-section{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.price-label{font-size:11px;color:var(--text3);margin-bottom:2px}
+.wholesale-price{font-size:28px;font-weight:700;color:var(--blue);letter-spacing:-1px}
+.result-note{font-size:13px;color:var(--text2);margin-top:10px;line-height:1.6}
+.result-updated{font-size:11px;color:var(--text3);margin-top:8px}
+.not-found{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:40px 20px;text-align:center;color:var(--text2)}
+.not-found-icon{font-size:40px;margin-bottom:12px;opacity:.3}
+.loading{text-align:center;padding:40px;color:var(--text2);font-size:14px}
+.guide{background:var(--blue-pale);border:1px solid var(--blue-border);border-radius:var(--radius);padding:16px}
+.guide p{font-size:13px;color:var(--blue);line-height:1.7}
+.logout-btn{font-size:12px;color:rgba(255,255,255,.7);background:none;border:none;cursor:pointer;margin-top:4px;text-decoration:underline}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 로그인 -->
+  <div class="login-screen" id="login-screen">
+    <div class="login-logo">
+      <h1>도매 제품 조회</h1>
+      <p>거래처 전용 시스템</p>
+    </div>
+    <div class="login-card">
+      <h2>로그인</h2>
+      <div class="form-group">
+        <label>비밀번호</label>
+        <input type="password" id="ws-key" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doWsLogin()" />
+      </div>
+      <button class="btn-login" onclick="doWsLogin()">로그인</button>
+      <div class="login-status" id="ws-login-status"></div>
+    </div>
+  </div>
+
+  <!-- 메인 -->
+  <div id="main-screen" style="display:none;flex-direction:column;flex:1">
+    <div class="header">
+      <div class="header-logo">Wholesale</div>
+      <div class="header-title">도매 제품 조회</div>
+      <div class="header-subtitle">거래처 전용 — 무단 복사/유출 금지</div>
+      <button class="logout-btn" onclick="doLogout()">로그아웃</button>
+    </div>
+
+    <div class="search-wrap">
+      <div class="search-box">
+        <span class="search-label">제품 번호를 입력하세요</span>
+        <div class="search-row">
+          <input type="text" id="search-inp" placeholder="제품 번호 입력..." onkeydown="if(event.key==='Enter')doSearch()" autocomplete="off" />
+          <button class="btn-search" onclick="doSearch()">조회</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-wrap">
+      <div id="result-area">
+        <div class="guide">
+          <p>제품 번호를 입력하시면<br>도매가와 제품 정보를 확인하실 수 있습니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbzOZJk0T8BZS2OKfS8eYm5Ras0cqvnU8vjVIUQDhNdp9WkuU3jwjDHpgfOODV4kRm1MQw/exec';
+let wsKey = sessionStorage.getItem('ws_key') || '';
+
+// 이미지 우클릭/저장 방지
+document.addEventListener('contextmenu', e => {
+  if(e.target.tagName === 'IMG') e.preventDefault();
+});
+
+if(wsKey) showMain();
+
+function doWsLogin(){
+  const key = document.getElementById('ws-key').value.trim();
+  const st = document.getElementById('ws-login-status');
+  if(!key){st.className='login-status s-err';st.textContent='비밀번호를 입력하세요';return;}
+  st.className='login-status s-loading';st.textContent='확인 중...';
+  fetch(API_URL+'?key='+encodeURIComponent(key)+'&action=getRole')
+    .then(r=>r.json()).then(data=>{
+      if(data.status==='ok' && data.role==='wholesale'){
+        wsKey=key;
+        sessionStorage.setItem('ws_key',key);
+        showMain();
+      } else {
+        st.className='login-status s-err';st.textContent='비밀번호가 틀렸습니다';
+      }
+    }).catch(()=>{
+      st.className='login-status s-err';st.textContent='연결 실패';
+    });
+}
+
+function showMain(){
+  document.getElementById('login-screen').style.display='none';
+  const ms=document.getElementById('main-screen');
+  ms.style.display='flex';ms.style.flexDirection='column';
+}
+
+function doLogout(){
+  sessionStorage.removeItem('ws_key');
+  wsKey='';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('main-screen').style.display='none';
+  document.getElementById('ws-key').value='';
+}
+
+function doSearch(){
+  const q = document.getElementById('search-inp').value.trim();
+  const el = document.getElementById('result-area');
+  if(!q){el.innerHTML='<div class="guide"><p>제품 번호를 입력하세요.</p></div>';return;}
+  el.innerHTML='<div class="loading">조회 중...</div>';
+  fetch(API_URL+'?key='+encodeURIComponent(wsKey)+'&action=lookup&model='+encodeURIComponent(q))
+    .then(r=>r.json()).then(data=>{
+      if(data.status==='ok'){
+        const p=data.data;
+        const stones=[p.main_stone,p.sub_stone].filter(Boolean).join(', ');
+        const wsPrice=p.wholesale_price||p.sale_price||0;
+        el.innerHTML=`
+          <div class="result-card">
+            <div class="result-img-wrap">
+              <div class="no-save-overlay"></div>
+              ${p.photo?`<img src="${p.photo}" alt="" draggable="false" onerror="this.parentElement.innerHTML='<div class=result-img-placeholder>💍</div>'">`:'<div class="result-img-placeholder">💍</div>'}
+            </div>
+            <div class="result-body">
+              <div class="result-id">No. ${p.customer_id}</div>
+              <div class="result-cat">${p.category||''} ${stones?'— '+stones:''}</div>
+              ${p.description?`<div class="result-stones">${p.description}</div>`:''}
+              <div class="price-section">
+                <div class="price-label">도매가</div>
+                <div class="wholesale-price">₩${Number(wsPrice).toLocaleString()}</div>
+              </div>
+              <div class="result-updated">업데이트: ${p.updated_date||''}</div>
+            </div>
+          </div>`;
+      } else {
+        el.innerHTML=`<div class="not-found"><div class="not-found-icon">📦</div><div style="font-size:14px;line-height:1.6">"${q}"에 해당하는<br>제품을 찾을 수 없습니다.</div></div>`;
+      }
+    }).catch(()=>{
+      el.innerHTML='<div class="not-found"><div class="not-found-icon">⚠️</div><div style="font-size:14px">조회 실패. 다시 시도해 주세요.</div></div>';
+    });
+}
+</script>
+</body>
+</html>
