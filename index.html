@@ -557,6 +557,17 @@ function selectRegSheet(el,sheet){
   el.classList.add('active');
   currentRegSheet=sheet;
   renderRegForm(sheet);
+  if(sheet==='Own_Products'){
+    updateBaseDropdown();
+    updatePlatingDropdown();
+    if(userRole==='admin'){
+      const g=document.getElementById('new-material-group');
+      if(g)g.style.display='block';
+    }
+  }
+  if(sheet==='Rokuzan'||sheet==='Own_Products'){
+    updateStoneDropdowns();
+  }
 }
 
 function renderRegForm(sheet){
