@@ -299,6 +299,14 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
     <!-- 필터 -->
     <div class="filter-bar" id="filter-bar"></div>
 
+    <!-- 목록 내 검색 -->
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input type="text" id="list-search" placeholder="번호, 스톤, 설명으로 검색..." 
+        style="flex:1;padding:9px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--panel);font-size:13px;color:var(--text);font-family:'Noto Sans KR',sans-serif;outline:none"
+        oninput="filterListSearch(this.value)" />
+      <button class="btn-sm" onclick="document.getElementById('list-search').value='';filterListSearch('')">✕</button>
+    </div>
+
     <div class="adjust-panel" id="adjust-panel" style="display:none">
       <h3>가격 일괄 조정</h3>
       <div class="adjust-row">
@@ -1207,6 +1215,28 @@ function updateFilterOptions(sheet){
 }
 
 function getFilterVal(id){const el=document.getElementById(id);return el?el.value:'';}
+
+function filterListSearch(q){
+  if(!q){
+    filteredProducts=[...products].map(p=>({...p,selected:false}));
+  } else {
+    const lq=q.toLowerCase();
+    filteredProducts=products.filter(p=>
+      (p.customer_id&&p.customer_id.toString().toLowerCase().includes(lq))||
+      (p.factory_id&&p.factory_id.toString().toLowerCase().includes(lq))||
+      (p.main_stone&&p.main_stone.toLowerCase().includes(lq))||
+      (p.sub_stone&&p.sub_stone.toLowerCase().includes(lq))||
+      (p.description&&p.description.toLowerCase().includes(lq))||
+      (p.category&&p.category.toLowerCase().includes(lq))||
+      (p.title&&p.title.toLowerCase().includes(lq))||
+      (p.artist&&p.artist.toLowerCase().includes(lq))||
+      (p.mineral_type&&p.mineral_type.toLowerCase().includes(lq))||
+      (p.variety&&p.variety.toLowerCase().includes(lq))
+    ).map(p=>({...p,selected:false}));
+  }
+  renderProductItems(filteredProducts);
+  document.getElementById('sel-count').textContent=`${filteredProducts.length}개 (전체 ${products.length}개)`;
+}
 
 function applyFilters(){
   let result=[...products];
