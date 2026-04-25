@@ -1464,7 +1464,7 @@ function toggleVisible(id,channel){
   const params={action:'updateProduct',sheet:currentSheet,id};
   params[field]=newVal;
   api(params).then(data=>{
-    if(data.status==='ok'){closeModal();loadList();showToast(`${channel==='retail'?'소매':'도매'} 노출 변경`);}
+    if(data.status==="ok"){p[field]=newVal;openDetail(id);showToast(`${channel==="retail"?"소매":"도매"} 노출 변경`);}
   });
 }
 
@@ -1474,7 +1474,14 @@ function editField(id,field,label,current){
   const params={action:'updateProduct',sheet:currentSheet,id};
   params[field]=val;
   api(params).then(data=>{
-    if(data.status==='ok'){closeModal();loadList();showToast('✓ 수정 완료');}
+    if(data.status==='ok'){
+      // 해당 제품 데이터 업데이트
+      const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
+      if(p) p[field]=val;
+      // 모달 유지하면서 내용 업데이트
+      openDetail(id);
+      showToast('✓ 수정 완료');
+    }
   });
 }
 
