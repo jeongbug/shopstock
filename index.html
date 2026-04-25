@@ -416,14 +416,17 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
         <div class="form-group">
           <label>제작 공장/거래처 (복수 선택 가능)</label>
           <div id="factory-checkboxes" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;max-height:200px;overflow-y:auto"></div>
-          <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
-            <input type="text" id="new-factory-name" placeholder="새 거래처명" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'Noto Sans KR',sans-serif;background:var(--surface);color:var(--text);outline:none"/>
-            <select id="new-factory-type" style="padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--surface);color:var(--text);outline:none;flex-shrink:0">
-              <option value="제품공장">제품공장</option>
-              <option value="체인/부속">체인/부속</option>
-              <option value="스톤공장">스톤공장</option>
-            </select>
-            <button onclick="addNewFactory()" style="padding:8px 12px;background:var(--gold);border:none;border-radius:var(--radius-sm);color:#fff;font-size:12px;cursor:pointer;white-space:nowrap;font-family:'Noto Sans KR',sans-serif;flex-shrink:0">추가</button>
+          <div style="margin-top:8px">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:5px">새 거래처 추가</div>
+            <div style="display:flex;gap:6px">
+              <input type="text" id="new-factory-name" placeholder="거래처명" style="flex:1;min-width:0;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'Noto Sans KR',sans-serif;background:var(--panel);color:var(--text);outline:none"/>
+              <select id="new-factory-type" style="width:90px;padding:7px 4px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:11px;background:var(--panel);color:var(--text);outline:none;flex-shrink:0">
+                <option value="제품공장">제품공장</option>
+                <option value="체인/부속">체인/부속</option>
+                <option value="스톤공장">스톤공장</option>
+              </select>
+              <button onclick="addNewFactory()" style="padding:7px 10px;background:var(--gold);border:none;border-radius:var(--radius-sm);color:#fff;font-size:12px;cursor:pointer;flex-shrink:0;font-family:'Noto Sans KR',sans-serif">추가</button>
+            </div>
           </div>
         </div>
         <div class="form-group">
@@ -1774,8 +1777,8 @@ function renderFactoryCheckboxes(selectedFactories=[]){
         <div style="display:flex;flex-wrap:wrap;gap:6px">
           ${factories.map(f=>{
             const isSel=selected.includes(f.name);
-            return `<label style="display:inline-block;white-space:nowrap;font-size:13px;cursor:pointer;padding:6px 14px;border-radius:20px;background:${isSel?'var(--gold)':'var(--panel)'};color:${isSel?'#fff':'var(--text)'};border:1px solid ${isSel?'var(--gold)':'var(--border2)'};transition:all .15s">
-              <input type="checkbox" value="${f.name}" ${isSel?'checked':''} style="display:none" onchange="this.parentElement.style.background=this.checked?'var(--gold)':'var(--panel)';this.parentElement.style.color=this.checked?'#fff':'var(--text)';this.parentElement.style.borderColor=this.checked?'var(--gold)':'var(--border2)'" />
+            return `<label style="display:inline-block;white-space:nowrap;font-size:12px;cursor:pointer;padding:4px 10px;border-radius:14px;background:${isSel?'var(--gold)':'var(--panel)'};color:${isSel?'#fff':'var(--text2)'};border:1px solid ${isSel?'var(--gold)':'var(--border2)'};transition:all .15s">
+              <input type="checkbox" value="${f.name}" ${isSel?'checked':''} style="display:none" onchange="this.parentElement.style.background=this.checked?'var(--gold)':'var(--panel)';this.parentElement.style.color=this.checked?'#fff':'var(--text2)';this.parentElement.style.borderColor=this.checked?'var(--gold)':'var(--border2)'" />
               ${f.name}
             </label>`;
           }).join('')}
