@@ -1294,6 +1294,9 @@ function selectListSheet(el,sheet){
 function loadList(){
   const el=document.getElementById('product-list');
   el.innerHTML='<div class="loading-state">불러오는 중...</div>';
+  // 검색창 초기화
+  const searchEl=document.getElementById('list-search');
+  if(searchEl) searchEl.value='';
   api({action:'getAll',sheet:currentSheet}).then(data=>{
     if(data.status==='ok'){
       products=data.data.filter(p=>p.customer_id).map(p=>({...p,selected:false}));
