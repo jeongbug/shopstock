@@ -239,7 +239,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 
   <!-- 홈 -->
   <div class="view active" id="view-dashboard">
-    <p class="page-title">대시보드 <span class="role-badge" id="role-badge"></span></p>
+    <p class="page-title">대시보드 <span class="role-badge" id="role-badge"></span> <span id="user-name-badge" style="font-size:13px;font-weight:400;color:var(--text2)"></span></p>
     
     <!-- 금 시세 -->
     <div id="gold-price-section" style="margin-bottom:14px">
@@ -509,6 +509,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 <script>
 let cfg = JSON.parse(localStorage.getItem('jw_admin_cfg')||'{}');
 let userRole = '';
+let userName = '';
 let currentSheet = 'Rokuzan';
 let currentRegSheet = 'Rokuzan';
 let currentCatalogSheet = 'Rokuzan';
@@ -517,8 +518,7 @@ let filteredProducts = [];
 let searchResults = [];
 let adjVisible = false;
 let viewMode = 'list';
-let userName='';
-  
+
 const CATEGORIES = {
   'Rokuzan': ['목걸이','귀걸이','반지','브로치','팔찌','펜던트','변형'],
   'Own_Products': ['실버_목걸이','실버_귀걸이','실버_반지','실버_브로치','실버_팔찌','실버_펜던트','골드_목걸이','골드_귀걸이','골드_반지','골드_브로치','골드_팔찌','골드_펜던트','변형'],
@@ -691,7 +691,10 @@ function doLogin(){
       // 백그라운드에서 role 재확인
       fetch(url+'?key='+encodeURIComponent(key)+'&action=getRole')
         .then(r=>r.json()).then(rd=>{
-          if(rd.status==='ok') localStorage.setItem('jw_auth_cache',JSON.stringify({key,role:roleData.role,name:roleData.name||''}));
+          if(rd.status==='ok'){
+            userName=rd.name||'';
+            localStorage.setItem('jw_auth_cache',JSON.stringify({key,role:rd.role,name:rd.name||''}));
+          }
         }).catch(()=>{});
       return;
     }
@@ -706,7 +709,7 @@ function doLogin(){
         userName=roleData.name||'';
         cfg={url,key};
         localStorage.setItem('jw_admin_cfg',JSON.stringify(cfg));
-        localStorage.setItem('jw_auth_cache',JSON.stringify({key,role:roleData.role}));
+        localStorage.setItem('jw_auth_cache',JSON.stringify({key,role:roleData.role,name:roleData.name||''}));
         fetch(url+'?key='+encodeURIComponent(key)+'&action=getStats')
           .then(r=>r.json()).then(data=>{
             if(data.status==='ok'){
@@ -766,6 +769,8 @@ function renderStats(stats){
   const badge=document.getElementById('role-badge');
   badge.className='role-badge '+(userRole==='admin'?'role-admin':'role-staff');
   badge.textContent=userRole==='admin'?'관리자':'직원';
+  const nameBadge=document.getElementById('user-name-badge');
+  if(nameBadge&&userName) nameBadge.textContent=userName;
   const el=document.getElementById('stats-grid');
   const items=[
     {key:'Rokuzan',label:'Rokuzan'},
