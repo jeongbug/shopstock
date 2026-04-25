@@ -414,10 +414,18 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
           <input type="text" id="order-customer" placeholder="거래처명 또는 손님 이름" />
         </div>
         <div class="form-group">
-          <label>제작 공장</label>
-          <select id="order-factory">
-            <option value="">선택...</option>
-          </select>
+          <label>제작 공장/거래처 (복수 선택 가능)</label>
+          <div id="factory-checkboxes" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;max-height:200px;overflow-y:auto"></div>
+          ${userRole==='admin'?`
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <input type="text" id="new-factory-name" placeholder="새 거래처명" style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:'Noto Sans KR',sans-serif;background:var(--surface)"/>
+            <select id="new-factory-type" style="padding:7px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--surface)">
+              <option value="제품공장">제품공장</option>
+              <option value="체인/부속">체인/부속</option>
+              <option value="스톤공장">스톤공장</option>
+            </select>
+            <button onclick="addNewFactory()" style="padding:7px 12px;background:var(--gold);border:none;border-radius:var(--radius-sm);color:#fff;font-size:12px;cursor:pointer">추가</button>
+          </div>`:''}
         </div>
         <div class="form-group">
           <label>상태</label>
@@ -1742,23 +1750,53 @@ let currentOrderTab='active';
 let editingOrderId=null;
 let factoriesCache=[];
 
-function loadFactories(){
+function loadFactories(selectedFactories=[]){
   api({action:'getFactories'}).then(data=>{
     if(data.status==='ok'){
       factoriesCache=data.data;
-      const sel=document.getElementById('order-factory');
-      if(!sel)return;
-      sel.innerHTML='<option value="">선택...</option>';
-      ['제품공장','체인/부속','스톤공장'].forEach(type=>{
-        const group=document.createElement('optgroup');
-        group.label=type;
-        factoriesCache.filter(f=>f.type===type).forEach(f=>{
-          const o=document.createElement('option');
-          o.value=f.name;o.textContent=f.name;
-          group.appendChild(o);
-        });
-        sel.appendChild(group);
-      });
+      renderFactoryCheckboxes(selectedFactories);
+    }
+  });
+}
+
+function renderFactoryCheckboxes(selectedFactories=[]){
+  const el=document.getElementById('factory-checkboxes');
+  if(!el)return;
+  const selected=Array.isArray(selectedFactories)?selectedFactories:
+    (selectedFactories?selectedFactories.split(',').map(s=>s.trim()):[]);
+
+  const types=['제품공장','체인/부속','스톤공장'];
+  el.innerHTML=types.map(type=>{
+    const factories=factoriesCache.filter(f=>f.type===type);
+    if(!factories.length)return '';
+    return `
+      <div style="margin-bottom:8px">
+        <div style="font-size:11px;color:var(--text3);font-weight:500;margin-bottom:4px">${type}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${factories.map(f=>`
+            <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;background:var(--panel);padding:4px 8px;border-radius:20px;border:1px solid var(--border2)">
+              <input type="checkbox" value="${f.name}" ${selected.includes(f.name)?'checked':''} style="accent-color:var(--gold)" />
+              ${f.name}
+            </label>`).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function getSelectedFactories(){
+  const checkboxes=document.querySelectorAll('#factory-checkboxes input[type=checkbox]:checked');
+  return Array.from(checkboxes).map(cb=>cb.value).join(', ');
+}
+
+function addNewFactory(){
+  const name=document.getElementById('new-factory-name').value.trim();
+  const type=document.getElementById('new-factory-type').value;
+  if(!name){showToast('거래처명을 입력하세요');return;}
+  api({action:'addFactory',name,type}).then(data=>{
+    if(data.status==='ok'){
+      showToast('✓ 거래처 추가 완료');
+      document.getElementById('new-factory-name').value='';
+      loadFactories();
     }
   });
 }
@@ -1802,7 +1840,7 @@ function renderOrders(items){
         <div>
           <div class="order-id">${o.order_id} · ${o.order_date||''}</div>
           <div class="order-customer">${o.customer||''}</div>
-          <div class="order-factory">🏭 ${o.factory||'-'}</div>
+          <div class="order-factory">🏭 ${o.factories||'-'}</div>
         </div>
         <span class="order-status status-${o.status}">${o.status||''}</span>
       </div>
@@ -1828,21 +1866,20 @@ function showOrderForm(orderId=null){
       btn.textContent='수정하기';
       btn.onclick=()=>submitOrder(true);
       document.getElementById('order-customer').value=o.customer||'';
-      document.getElementById('order-factory').value=o.factory||'';
       document.getElementById('order-status').value=o.status||'주문접수';
       document.getElementById('order-memo').value=o.memo||'';
+      loadFactories(o.factories?o.factories.split(',').map(s=>s.trim()):[]);
     }
   } else {
     title.textContent='새 주문 등록';
     btn.textContent='등록하기';
     btn.onclick=()=>submitOrder(false);
     ['order-customer','order-memo'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('order-factory').value='';
     document.getElementById('order-status').value='주문접수';
     document.getElementById('order-img-label').textContent='📷 주문서 사진';
     document.getElementById('product-img-label').textContent='📷 완성 사진';
+    loadFactories([]);
   }
-  loadFactories();
   document.getElementById('order-modal').classList.add('open');
 }
 
@@ -1878,7 +1915,7 @@ function submitOrder(isEdit=false){
   btn.disabled=true;btn.textContent=isEdit?'수정 중...':'등록 중...';
   const params={
     customer,
-    factory:document.getElementById('order-factory').value,
+    factories:getSelectedFactories(),
     status:document.getElementById('order-status').value,
     memo:document.getElementById('order-memo').value,
     order_image:orderImages.order.join(','),
@@ -1916,7 +1953,7 @@ function openOrderDetail(orderId){
     <div class="detail-row"><span class="lbl">주문번호</span><span class="val" style="font-family:monospace">${o.order_id}</span></div>
     <div class="detail-row"><span class="lbl">주문일</span><span class="val">${o.order_date||''}</span></div>
     <div class="detail-row"><span class="lbl">고객</span><span class="val">${o.customer||''}</span></div>
-    <div class="detail-row"><span class="lbl">공장</span><span class="val">${o.factory||'-'}</span></div>
+    <div class="detail-row"><span class="lbl">공장</span><span class="val">${o.factories||'-'}</span></div>
     <div class="detail-row"><span class="lbl">상태</span><span class="val"><span class="order-status status-${o.status}">${o.status}</span></span></div>
     ${o.memo?`<div style="margin-top:10px;font-size:13px;color:var(--text2);line-height:1.6;padding-bottom:10px;border-bottom:1px solid var(--border)">${o.memo}</div>`:''}
     ${orderImgs.length?`<div style="margin-top:10px"><div style="font-size:11px;color:var(--text3);margin-bottom:6px">주문서</div>
