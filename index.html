@@ -1770,13 +1770,15 @@ function renderFactoryCheckboxes(selectedFactories=[]){
     if(!factories.length)return '';
     return `
       <div style="margin-bottom:10px">
-        <div style="font-size:11px;color:var(--text3);font-weight:500;margin-bottom:6px;letter-spacing:0.3px">${type}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:4px">
-          ${factories.map(f=>`
-            <label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;padding:6px 12px;border-radius:20px;white-space:nowrap;background:${selected.includes(f.name)?'var(--gold)':'var(--panel)'};color:${selected.includes(f.name)?'#fff':'var(--text)'};border:1px solid ${selected.includes(f.name)?'var(--gold)':'var(--border2)'};transition:all .2s">
-              <input type="checkbox" value="${f.name}" ${selected.includes(f.name)?'checked':''} style="display:none" onchange="this.parentElement.style.background=this.checked?'var(--gold)':'var(--panel)';this.parentElement.style.color=this.checked?'#fff':'var(--text)';this.parentElement.style.borderColor=this.checked?'var(--gold)':'var(--border2)'" />
+        <div style="font-size:11px;color:var(--text3);font-weight:500;margin-bottom:6px">${type}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${factories.map(f=>{
+            const isSel=selected.includes(f.name);
+            return `<label style="display:inline-block;white-space:nowrap;font-size:13px;cursor:pointer;padding:6px 14px;border-radius:20px;background:${isSel?'var(--gold)':'var(--panel)'};color:${isSel?'#fff':'var(--text)'};border:1px solid ${isSel?'var(--gold)':'var(--border2)'};transition:all .15s">
+              <input type="checkbox" value="${f.name}" ${isSel?'checked':''} style="display:none" onchange="this.parentElement.style.background=this.checked?'var(--gold)':'var(--panel)';this.parentElement.style.color=this.checked?'#fff':'var(--text)';this.parentElement.style.borderColor=this.checked?'var(--gold)':'var(--border2)'" />
               ${f.name}
-            </label>`).join('')}
+            </label>`;
+          }).join('')}
         </div>
       </div>`;
   }).join('');
