@@ -1664,7 +1664,7 @@ function saveProductPhoto(id){
   if(btn){btn.textContent='업로드 중...';btn.disabled=true;}
   
   const uploadId='up_'+Date.now();
-  const CHUNK_SIZE=5000;
+  const CHUNK_SIZE=1000;
   const chunks=[];
   for(let i=0;i<photo.length;i+=CHUNK_SIZE){
     chunks.push(photo.substring(i,i+CHUNK_SIZE));
