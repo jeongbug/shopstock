@@ -1622,7 +1622,48 @@ function openDetail(id){
   document.getElementById('modal').classList.add('open');
 }
 
-let pendingPhotoData={};
+// Firebase Storage 설정
+const firebaseConfig = {
+  apiKey: "AIzaSyCpGu5m48j1BkjDvj1uY5_iue5hUIxoLwM",
+  authDomain: "jewelry-stock.firebaseapp.com",
+  projectId: "jewelry-stock",
+  storageBucket: "jewelry-stock.firebasestorage.app",
+  messagingSenderId: "750041168474",
+  appId: "1:750041168474:web:6d89b163354bcb1e1b7663"
+};
+
+let firebaseApp = null;
+let firebaseStorage = null;
+
+async function initFirebase(){
+  if(firebaseApp) return true;
+  try {
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js');
+    const { getStorage, ref, uploadBytes, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/12.12.1/firebase-storage.js');
+    firebaseApp = initializeApp(firebaseConfig);
+    firebaseStorage = { getStorage, ref, uploadBytes, getDownloadURL, storage: getStorage(firebaseApp) };
+    return true;
+  } catch(e) {
+    console.error('Firebase 초기화 실패', e);
+    return false;
+  }
+}
+
+async function uploadToFirebase(base64Data, fileName){
+  const ok = await initFirebase();
+  if(!ok) throw new Error('Firebase 초기화 실패');
+  const { ref, uploadBytes, getDownloadURL, storage } = firebaseStorage;
+  // base64를 Blob으로 변환
+  const base64 = base64Data.split(',')[1];
+  const binary = atob(base64);
+  const array = new Uint8Array(binary.length);
+  for(let i=0;i<binary.length;i++) array[i]=binary.charCodeAt(i);
+  const blob = new Blob([array], {type:'image/jpeg'});
+  const storageRef = ref(storage, 'products/'+fileName);
+  await uploadBytes(storageRef, blob);
+  const url = await getDownloadURL(storageRef);
+  return url;
+}
 
 function uploadPhotoForProduct(id){
   const area=document.getElementById('photo-upload-area-'+id);
@@ -1659,49 +1700,27 @@ function handleProductPhotoUpload(inp,id){
 function saveProductPhoto(id){
   const photo=pendingPhotoData[id];
   if(!photo){showToast('사진을 먼저 선택하세요');return;}
-  
   const btn=document.querySelector('#photo-upload-area-'+id+' .btn-primary');
   if(btn){btn.textContent='업로드 중...';btn.disabled=true;}
-  
-  const uploadId='up_'+Date.now();
-  const CHUNK_SIZE=1000;
-  const chunks=[];
-  for(let i=0;i<photo.length;i+=CHUNK_SIZE){
-    chunks.push(photo.substring(i,i+CHUNK_SIZE));
-  }
-  
-  // 청크 순차 전송
-  let index=0;
-  function sendNextChunk(){
-    if(index>=chunks.length){
-      // 완료 처리
-      if(btn) btn.textContent='완료 처리 중...';
-      api({action:'uploadFinish',upload_id:uploadId,file_name:id+'_photo.jpg'})
-        .then(result=>{
-          if(result.status==='ok'){
-            api({action:'updateProduct',sheet:currentSheet,id,photo:result.photo_url})
-              .then(()=>{
-                const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
-                if(p) p.photo=result.photo_url;
-                delete pendingPhotoData[id];
-                showToast('✓ 사진 저장 완료');
-                openDetail(id);
-              });
-          } else {
-            showToast('오류: '+(result.message||'실패'));
-            if(btn){btn.textContent='사진 저장';btn.disabled=false;}
-          }
-        });
-      return;
-    }
-    if(btn) btn.textContent=`업로드 중... ${Math.round((index/chunks.length)*100)}%`;
-    const qs='action=uploadChunk&upload_id='+encodeURIComponent(uploadId)+'&chunk='+encodeURIComponent(chunks[index])+'&index='+index;
-    fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&'+qs)
-      .then(r=>r.json())
-      .then(()=>{index++;sendNextChunk();})
-      .catch(()=>{showToast('업로드 실패');if(btn){btn.textContent='사진 저장';btn.disabled=false;}});
-  }
-  sendNextChunk();
+  const fileName=id+'_'+Date.now()+'.jpg';
+  uploadToFirebase(photo,fileName)
+    .then(url=>{
+      return api({action:'updateProduct',sheet:currentSheet,id,photo:url});
+    })
+    .then(data=>{
+      if(data.status==='ok'){
+        const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
+        if(p) p.photo=pendingPhotoData[id];
+        delete pendingPhotoData[id];
+        showToast('✓ 사진 저장 완료');
+        if(btn){btn.textContent='사진 저장';btn.disabled=false;}
+        openDetail(id);
+      }
+    })
+    .catch(err=>{
+      showToast('업로드 실패: '+err.message);
+      if(btn){btn.textContent='사진 저장';btn.disabled=false;}
+    });
 }
 
 function toggleVisible(id,channel){
