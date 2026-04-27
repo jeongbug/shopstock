@@ -291,6 +291,7 @@ window._fbReady = true;
     <button class="nav-btn" onclick="switchNav('search')">검색</button>
     <button class="nav-btn" onclick="switchNav('orders')">주문</button>
     <button class="nav-btn" onclick="switchNav('catalog')">카탈</button>
+    <button class="nav-btn" onclick="switchNav('reference')">자료</button>
   </div>
 
   <!-- 홈 -->
@@ -576,6 +577,40 @@ window._fbReady = true;
     </div>
     <div class="catalog-grid" id="catalog-grid"></div>
   </div>
+
+  <!-- 레퍼런스 자료 -->
+  <div class="view" id="view-reference">
+    <p class="page-title">레퍼런스 자료</p>
+    <button class="btn-primary" style="margin-bottom:14px" onclick="showReferenceForm()">+ 새 자료 추가</button>
+    <div id="reference-list"><div class="loading-state">불러오는 중...</div></div>
+  </div>
+
+</div>
+
+<!-- 레퍼런스 등록 모달 -->
+<div class="modal-bg" id="ref-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeRefModal()">✕</button>
+    <p class="modal-title" id="ref-modal-title">새 자료 추가</p>
+    <div class="form-group">
+      <label>제목 / 브랜드명</label>
+      <input type="text" id="ref-title" placeholder="예: Cartier 반지, Tiffany 목걸이" />
+    </div>
+    <div class="form-group">
+      <label>메모 (저장 이유, 참고 사항)</label>
+      <textarea id="ref-memo" placeholder="어떤 용도로 저장하는지, 어떤 요소가 참고할 만한지 등"></textarea>
+    </div>
+    <div class="form-group">
+      <label>이미지 (여러 장 가능)</label>
+      <div class="upload-area">
+        <span id="ref-img-label">📷 이미지 선택</span>
+        <input type="file" accept="image/*" multiple onchange="handleRefImages(this)" />
+      </div>
+      <div id="ref-img-preview" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>
+    </div>
+    <button class="btn-primary" id="ref-submit-btn" onclick="submitReference()">저장하기</button>
+  </div>
 </div>
 
 <div class="modal-bg" id="modal">
@@ -840,11 +875,10 @@ function showLogin(){
 
 function switchNav(v){
   document.querySelectorAll('.nav-btn').forEach((b,i)=>
-    b.classList.toggle('active',['dashboard','register','list','search','orders','catalog'][i]===v));
+    b.classList.toggle('active',['dashboard','register','list','search','orders','catalog','reference'][i]===v));
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   if(v==='list'){
-    // 이미 데이터가 있으면 다시 불러오지 않음
     if(!products.length) loadList();
     else renderProductItems(filteredProducts);
   }
@@ -852,6 +886,7 @@ function switchNav(v){
   if(v==='catalog')loadCatalog();
   if(v==='register'){loadStones();loadMaterials();}
   if(v==='orders'){loadOrders();}
+  if(v==='reference'){loadReferences();}
 }
 
 function loadStats(){
@@ -2230,7 +2265,132 @@ function closeOrderModal(){
 
 function exportCatalog(){
   showToast('PDF 저장 기능 준비 중...');
-  // 나중에 window.print() 또는 jsPDF 활용
+}
+
+// ================================
+// 레퍼런스 자료
+// ================================
+let refImages=[];
+
+function loadReferences(){
+  const el=document.getElementById('reference-list');
+  el.innerHTML='<div class="loading-state">불러오는 중...</div>';
+  api({action:'getReferences'}).then(data=>{
+    if(data.status==='ok') renderReferences(data.data);
+    else el.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div>불러오기 실패</div>';
+  });
+}
+
+function renderReferences(items){
+  const el=document.getElementById('reference-list');
+  if(!items.length){
+    el.innerHTML='<div class="empty-state"><div class="empty-icon">🖼️</div>저장된 자료가 없습니다</div>';
+    return;
+  }
+  el.innerHTML=items.slice().reverse().map(r=>{
+    const imgs=r.images?r.images.split(',').filter(Boolean):[];
+    return `
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div>
+          <div style="font-size:15px;font-weight:700">${r.title||'제목 없음'}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${r.created_date||''} ${r.created_by?'· '+r.created_by:''}</div>
+        </div>
+        <button onclick="deleteReference('${r.ref_id}')" style="padding:4px 8px;font-size:11px;border:1px solid #F5C6C6;border-radius:6px;background:transparent;cursor:pointer;color:var(--red);font-family:'Noto Sans KR',sans-serif">삭제</button>
+      </div>
+      ${r.memo?`<div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:8px;padding:8px;background:var(--surface);border-radius:var(--radius-sm)">${r.memo}</div>`:''}
+      ${imgs.length?`
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px">
+          ${imgs.map(img=>`<img src="${img}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:var(--radius-sm);cursor:pointer" onclick="openRefImage('${img}')" onerror="this.style.display='none'" alt="">`).join('')}
+        </div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function showReferenceForm(){
+  refImages=[];
+  document.getElementById('ref-title').value='';
+  document.getElementById('ref-memo').value='';
+  document.getElementById('ref-img-label').textContent='📷 이미지 선택';
+  document.getElementById('ref-img-preview').innerHTML='';
+  document.getElementById('ref-modal').classList.add('open');
+}
+
+function handleRefImages(inp){
+  if(!inp.files.length)return;
+  const files=Array.from(inp.files);
+  document.getElementById('ref-img-label').textContent=`✓ ${files.length}개 선택됨`;
+  const preview=document.getElementById('ref-img-preview');
+  preview.innerHTML='<div style="font-size:12px;color:var(--text2)">압축 중...</div>';
+  refImages=[];
+  let processed=0;
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const img=new Image();
+      img.onload=()=>{
+        const canvas=document.createElement('canvas');
+        const MAX=800;
+        let w=img.width,h=img.height;
+        if(w>h){if(w>MAX){h=h*(MAX/w);w=MAX;}}
+        else{if(h>MAX){w=w*(MAX/h);h=MAX;}}
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        const compressed=canvas.toDataURL('image/jpeg',0.75);
+        refImages.push(compressed);
+        processed++;
+        if(processed===files.length){
+          preview.innerHTML=refImages.map(src=>`<img src="${src}" style="width:60px;height:60px;object-fit:cover;border-radius:var(--radius-sm)" alt="">`).join('');
+        }
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function submitReference(){
+  const title=document.getElementById('ref-title').value.trim();
+  const memo=document.getElementById('ref-memo').value.trim();
+  if(!title&&!memo&&!refImages.length){showToast('제목이나 메모를 입력하세요');return;}
+  const btn=document.getElementById('ref-submit-btn');
+  btn.textContent='저장 중...';btn.disabled=true;
+  try {
+    const uploadedUrls=[];
+    for(let i=0;i<refImages.length;i++){
+      btn.textContent=`이미지 업로드 중... ${i+1}/${refImages.length}`;
+      const fileName='ref_'+Date.now()+'_'+i+'.jpg';
+      const url=await uploadToFirebase(refImages[i],fileName);
+      uploadedUrls.push(url);
+    }
+    const data=await api({action:'addReference',title,memo,images:uploadedUrls.join(','),created_by:userName});
+    if(data.status==='ok'){
+      showToast('✓ 자료 저장 완료');
+      closeRefModal();
+      loadReferences();
+    }
+  } catch(err){
+    showToast('저장 실패: '+err.message);
+  }
+  btn.textContent='저장하기';btn.disabled=false;
+}
+
+function deleteReference(refId){
+  if(!confirm('삭제할까요?'))return;
+  api({action:'deleteReference',ref_id:refId}).then(data=>{
+    if(data.status==='ok'){showToast('✓ 삭제 완료');loadReferences();}
+  });
+}
+
+function openRefImage(src){
+  document.getElementById('modal-title').textContent='이미지';
+  document.getElementById('modal-body').innerHTML=`<img src="${src}" style="width:100%;border-radius:var(--radius-sm)" alt="">`;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeRefModal(){
+  document.getElementById('ref-modal').classList.remove('open');
+  refImages=[];
 }
 
 // 오늘 날짜 표시
