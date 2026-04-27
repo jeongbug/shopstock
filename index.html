@@ -661,16 +661,13 @@ function api(params){
     return fetch(cfg.url+'?key='+encodeURIComponent(cfg.key),{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({...params,key:cfg.key})
+      body:JSON.stringify(Object.assign({},params,{key:cfg.key}))
     }).then(r=>r.json());
   }
   const qs=Object.entries(params).map(([k,v])=>k+'='+encodeURIComponent(v||'')).join('&');
   return fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&'+qs).then(r=>r.json());
 }
-  }
-  const qs=Object.entries(params).map(([k,v])=>k+'='+encodeURIComponent(v||'')).join('&');
-  return fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&'+qs).then(r=>r.json());
-}
+
 function doLogin(){
   const url=document.getElementById('cfg-url').value.trim();
   const key=document.getElementById('cfg-key').value.trim();
