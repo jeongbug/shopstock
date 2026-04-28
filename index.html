@@ -2821,10 +2821,9 @@ function exportCatalog(){
     @media print {
       body > *:not(#print-area){display:none!important;}
       #print-area{display:block!important;position:static!important;}
-      @page{
-        margin:10mm;
-        size:A4;
-      }
+      @page{margin:10mm;size:A4;}
+      .print-page{page-break-after:always;}
+      .print-page:last-child{page-break-after:avoid;}
       #print-area img{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
       a[href]:after{content:none!important;}
       *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
@@ -2835,35 +2834,60 @@ function exportCatalog(){
   if(printArea)printArea.remove();
   printArea=document.createElement('div');
   printArea.id='print-area';
-  printArea.style.cssText='background:white;padding:16px;font-family:sans-serif;display:none';
+  printArea.style.cssText='background:white;font-family:sans-serif;display:none';
 
   const today=new Date().toLocaleDateString('ko-KR');
+  const COLS=6;
+  const FIRST_ROWS=5;  // 첫 페이지 (헤더 있음)
+  const OTHER_ROWS=6;  // 나머지 페이지
+  const FIRST_PAGE=COLS*FIRST_ROWS; // 30개
+  const OTHER_PAGE=COLS*OTHER_ROWS; // 36개
 
-  printArea.innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-bottom:2px solid #C8A96A;padding-bottom:8px">
-      <h2 style="margin:0;font-size:18px;color:#C8A96A">카탈로그</h2>
-      <span style="font-size:12px;color:#999">${today}</span>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px">
-      ${items.map(item=>{
-        const imgEl=item.querySelector('img');
-        return `
-        <div style="border:1px solid #eee;border-radius:6px;padding:6px;text-align:center;break-inside:avoid">
-          ${imgEl?`<img src="${imgEl.src}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;margin-bottom:4px">`
-            :'<div style="width:100%;aspect-ratio:1;background:#f5f5f5;border-radius:4px;margin-bottom:4px"></div>'}
-          <div style="font-size:11px;font-weight:700;color:#333">${item.querySelector('.catalog-id')?.textContent||''}</div>
-          ${item.querySelector('.catalog-price')?`<div style="font-size:12px;color:#C8A96A;font-weight:700">${item.querySelector('.catalog-price').textContent}</div>`:''}
-          ${item.querySelector('.catalog-note')?`<div style="font-size:9px;color:#888;margin-top:2px">${item.querySelector('.catalog-note').textContent}</div>`:''}
-        </div>`;
-      }).join('')}
+  const renderItem=item=>{
+    const imgEl=item.querySelector('img');
+    return `
+    <div style="border:1px solid #eee;border-radius:5px;padding:5px;text-align:center">
+      ${imgEl?`<img src="${imgEl.src}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:3px;margin-bottom:3px">`
+        :'<div style="width:100%;aspect-ratio:1;background:#f5f5f5;border-radius:3px;margin-bottom:3px"></div>'}
+      <div style="font-size:10px;font-weight:700;color:#333">${item.querySelector('.catalog-id')?.textContent||''}</div>
+      ${item.querySelector('.catalog-price')?`<div style="font-size:11px;color:#C8A96A;font-weight:700">${item.querySelector('.catalog-price').textContent}</div>`:''}
+      ${item.querySelector('.catalog-note')?`<div style="font-size:8px;color:#888;margin-top:1px">${item.querySelector('.catalog-note').textContent}</div>`:''}
+    </div>`;
+  };
+
+  let html='';
+
+  // 첫 페이지
+  const firstItems=items.slice(0,FIRST_PAGE);
+  html+=`
+    <div class="print-page" style="padding:14px;height:277mm;box-sizing:border-box;display:flex;flex-direction:column">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:2px solid #C8A96A;padding-bottom:8px;flex-shrink:0">
+        <h2 style="margin:0;font-size:18px;color:#C8A96A">카탈로그</h2>
+        <span style="font-size:12px;color:#999">${today}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(${COLS},1fr);gap:6px;flex:1">
+        ${firstItems.map(renderItem).join('')}
+      </div>
     </div>`;
 
+  // 나머지 페이지
+  let idx=FIRST_PAGE;
+  while(idx<items.length){
+    const pageItems=items.slice(idx,idx+OTHER_PAGE);
+    html+=`
+      <div class="print-page" style="padding:14px;height:277mm;box-sizing:border-box">
+        <div style="display:grid;grid-template-columns:repeat(${COLS},1fr);gap:6px">
+          ${pageItems.map(renderItem).join('')}
+        </div>
+      </div>`;
+    idx+=OTHER_PAGE;
+  }
+
+  printArea.innerHTML=html;
   document.body.appendChild(printArea);
 
-  // 파일명 설정
   const oldTitle=document.title;
   document.title='카탈로그_'+today.replace(/\./g,'').replace(/ /g,'');
-
   setTimeout(()=>{
     window.print();
     setTimeout(()=>{
