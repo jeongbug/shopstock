@@ -2265,6 +2265,7 @@ function renderOrders(items){
                 <option value="유보" ${item.status==='유보'?'selected':''}>유보</option>
               </select>
               <div style="display:flex;gap:4px">
+                <button class="btn-sm" onclick="reorderItem('${o.order_id}','${item.item_id}')">재주문</button>
                 <button class="btn-sm" onclick="showOrderItemForm('${o.order_id}','${item.item_id}')">수정</button>
                 <button class="btn-sm" style="color:var(--red);border-color:#F5C6C6" onclick="deleteOrderItem('${item.item_id}','${o.order_id}')">삭제</button>
               </div>
@@ -2338,7 +2339,29 @@ function submitOrder(){
     btn.disabled=false;btn.textContent=editingOrderId?'수정하기':'등록하기';
     if(data.status==='ok'){
       showToast(editingOrderId?'✓ 수정 완료':'✓ 주문 등록: '+(data.order_id||''));
-      closeOrderModal();loadOrders();
+      closeOrderModal();
+
+      // 재주문 아이템이 있으면 자동으로 제품 추가 폼 열기
+      if(window._reorderItem && data.order_id){
+        const item=window._reorderItem;
+        window._reorderItem=null;
+        setTimeout(()=>{
+          showOrderItemForm(data.order_id);
+          setTimeout(()=>{
+            document.getElementById('item-factory').value=item.factory||'';
+            document.getElementById('item-model-no').value=item.model_no||'';
+            document.getElementById('item-category').value=item.category||'';
+            document.getElementById('item-base-material').value=item.base_material||'';
+            document.getElementById('item-plating').value=item.plating||'없음';
+            document.getElementById('item-stone-info').value=item.stone_info||'';
+            document.getElementById('item-quantity').value=item.quantity||1;
+            document.getElementById('item-work-type').value=item.work_type||'제작';
+            document.getElementById('item-memo').value=item.memo||'';
+          },300);
+        },300);
+      } else {
+        loadOrders();
+      }
     }
   }).catch(()=>{btn.disabled=false;showToast('실패');});
 }
@@ -2578,6 +2601,22 @@ function deleteOrderItem(itemId,orderId){
   api({action:'deleteOrderItem',item_id:itemId}).then(data=>{
     if(data.status==='ok'){showToast('✓ 삭제 완료');loadOrders();}
   });
+}
+
+function reorderItem(orderId, itemId){
+  const o=orders.find(x=>x.order_id===orderId);
+  const item=orderItems.find(x=>x.item_id===itemId);
+  if(!o||!item)return;
+
+  // 새 주문 등록 폼 열기
+  showOrderForm();
+  setTimeout(()=>{
+    document.getElementById('order-customer').value=o.customer||'';
+    document.getElementById('order-memo').value='재주문 (원본: '+orderId+')';
+  },100);
+
+  // 주문 등록 후 제품 자동 입력을 위해 임시 저장
+  window._reorderItem=item;
 }
 
 function reorderFromOrder(orderId){
