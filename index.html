@@ -1374,6 +1374,9 @@ function renderFilterBar(sheet){
 
   if(sheet==='Own_Products'){
     html+=`
+      <select class="filter-select" id="f-factory" onchange="applyFilters()">
+        <option value="">전체 공장</option>
+      </select>
       <select class="filter-select" id="f-material" onchange="applyFilters()">
         <option value="">전체 소재</option>
         <option value="실버">실버</option>
@@ -1449,6 +1452,11 @@ function updateFilterOptions(sheet){
     if(aEl) artists.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;aEl.appendChild(o);});
     if(sEl) sizes.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sEl.appendChild(o);});
   }
+  if(sheet==='Own_Products'){
+    const factories=[...new Set(products.map(p=>p.factory_id).filter(Boolean))].sort();
+    const fEl=document.getElementById('f-factory');
+    if(fEl) factories.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;fEl.appendChild(o);});
+  }
   if(sheet==='Gemstones'){
     const minerals=[...new Set(products.map(p=>p.mineral_type).filter(Boolean))].sort();
     const varieties=[...new Set(products.map(p=>p.variety).filter(Boolean))].sort();
@@ -1489,6 +1497,7 @@ function applyFilters(){
   const cat=getFilterVal('f-category');
   const stone=getFilterVal('f-stone');
   const material=getFilterVal('f-material');
+  const factory=getFilterVal('f-factory');
   const artist=getFilterVal('f-artist');
   const size=getFilterVal('f-size');
   const mineral=getFilterVal('f-mineral');
@@ -1498,6 +1507,7 @@ function applyFilters(){
   const sort=getFilterVal('f-sort');
 
   if(cat) result=result.filter(p=>p.category&&p.category.includes(cat));
+  if(factory) result=result.filter(p=>p.factory_id&&p.factory_id.toString()===factory);
   if(stone) result=result.filter(p=>p.main_stone===stone||p.sub_stone===stone);
   if(material) result=result.filter(p=>p.category&&p.category.startsWith(material));
   if(artist) result=result.filter(p=>p.artist===artist);
