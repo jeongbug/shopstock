@@ -1626,15 +1626,46 @@ function selectListSheet(el,sheet){
   loadList();
 }
 
-function loadList(){
+function loadList(preserveFilters=false){
   const el=document.getElementById('product-list');
   el.innerHTML='<div class="loading-state">불러오는 중...</div>';
+  
+  // 현재 필터값 저장
+  const savedFilters={};
+  if(preserveFilters){
+    ['f-category','f-stone','f-material','f-artist','f-size','f-mineral','f-variety','f-stock','f-visible','f-sort','f-factory'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) savedFilters[id]=el.value;
+    });
+  }
+  
+  // 검색창 값 저장
+  const searchVal=document.getElementById('list-search')?.value||'';
+
   api({action:'getAll',sheet:currentSheet}).then(data=>{
     if(data.status==='ok'){
       products=data.data.filter(p=>p.customer_id).map(p=>({...p,selected:false}));
       filteredProducts=[...products];
       renderFilterBar(currentSheet);
-      renderProductItems(filteredProducts);
+      
+      // 필터값 복원
+      if(preserveFilters){
+        Object.entries(savedFilters).forEach(([id,val])=>{
+          const el=document.getElementById(id);
+          if(el) el.value=val;
+        });
+        applyFilters();
+      } else {
+        renderProductItems(filteredProducts);
+      }
+
+      // 검색창 복원
+      if(searchVal){
+        const searchEl=document.getElementById('list-search');
+        if(searchEl) searchEl.value=searchVal;
+        filterListSearch(searchVal);
+      }
+
       document.getElementById('sel-count').textContent=`${products.length}개`;
     }
   }).catch(()=>{
@@ -1691,6 +1722,8 @@ function renderProductItems(items){
         </div>
         <div class="p-actions">
           <button class="btn-edit" onclick="openDetail('${p.customer_id}')">상세</button>
+          <button class="btn-edit" onclick="quickToggleVisible('${p.customer_id}','retail')" style="font-size:10px;background:${p.visible_retail==='Y'?'#E8F5E9':'#FFEBEE'};color:${p.visible_retail==='Y'?'#2E7D32':'#C62828'}">소매${p.visible_retail==='Y'?'▼':'▲'}</button>
+          <button class="btn-edit" onclick="quickToggleStock('${p.customer_id}')" style="font-size:10px;background:${p.stock_status==='재고있음'?'#E3F2FD':'#FFF3E0'};color:${p.stock_status==='재고있음'?'#1565C0':'#E65100'}">${p.stock_status==='재고있음'?'재고▼':'재고▲'}</button>
           ${userRole==='admin'?`<button class="btn-del" onclick="deleteProduct('${p.customer_id}')">삭제</button>`:''}
         </div>
       </div>`).join('');
@@ -1792,10 +1825,11 @@ function applyStockChange(){
   targets.forEach(p=>{
     api({action:'updateProduct',sheet:currentSheet,id:p.customer_id,stock_status:val})
       .then(()=>{
+        p.stock_status=val;
         done++;
         if(done===targets.length){
           showToast(`✓ ${done}개 재고상태 → ${val}`);
-          loadList();
+          renderProductItems(filteredProducts);
         }
       });
   });
@@ -1811,10 +1845,11 @@ function batchVisible(channel,val){
     const params={action:'updateProduct',sheet:currentSheet,id:p.customer_id};
     params[field]=val;
     api(params).then(()=>{
+      p[field]=val;
       done++;
       if(done===targets.length){
         showToast(`✓ ${done}개 ${channel==='retail'?'소매':'도매'} ${val==='Y'?'노출':'숨김'} 처리`);
-        loadList();
+        renderProductItems(filteredProducts);
       }
     });
   });
@@ -1951,6 +1986,35 @@ function saveProductPhoto(id){
       showToast('업로드 실패: '+err.message);
       if(btn){btn.textContent='사진 저장';btn.disabled=false;}
     });
+}
+
+function quickToggleVisible(id, channel){
+  const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
+  if(!p)return;
+  const field=channel==='retail'?'visible_retail':'visible_wholesale';
+  const newVal=p[field]==='Y'?'N':'Y';
+  const params={action:'updateProduct',sheet:currentSheet,id};
+  params[field]=newVal;
+  api(params).then(data=>{
+    if(data.status==='ok'){
+      p[field]=newVal;
+      renderProductItems(filteredProducts);
+      showToast(`소매 ${newVal==='Y'?'노출':'숨김'}`);
+    }
+  });
+}
+
+function quickToggleStock(id){
+  const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
+  if(!p)return;
+  const newVal=p.stock_status==='재고있음'?'단종':'재고있음';
+  api({action:'updateProduct',sheet:currentSheet,id,stock_status:newVal}).then(data=>{
+    if(data.status==='ok'){
+      p.stock_status=newVal;
+      renderProductItems(filteredProducts);
+      showToast(`재고 → ${newVal}`);
+    }
+  });
 }
 
 function toggleVisible(id,channel){
