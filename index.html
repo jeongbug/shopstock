@@ -2808,7 +2808,55 @@ function closeOrderItemModal(){
 }
 
 function exportCatalog(){
-  showToast('PDF 저장 기능 준비 중...');
+  // 프린트용 스타일 추가
+  let printStyle=document.getElementById('print-style');
+  if(!printStyle){
+    printStyle=document.createElement('style');
+    printStyle.id='print-style';
+    printStyle.textContent=`
+      @media print {
+        body * { visibility: hidden; }
+        #print-area, #print-area * { visibility: visible; }
+        #print-area {
+          position: fixed;
+          left: 0; top: 0;
+          width: 100%;
+          background: white;
+        }
+        .no-print { display: none !important; }
+      }
+    `;
+    document.head.appendChild(printStyle);
+  }
+
+  // 프린트용 영역 생성
+  let printArea=document.getElementById('print-area');
+  if(printArea) printArea.remove();
+  printArea=document.createElement('div');
+  printArea.id='print-area';
+  printArea.style.cssText='background:white;padding:20px;font-family:sans-serif';
+
+  // 카탈로그 타이틀
+  const channel=currentCatalogChannel==='retail'?'소매 카탈로그':'도매 카탈로그';
+  const today=new Date().toLocaleDateString('ko-KR');
+  printArea.innerHTML=`
+    <div style="text-align:center;margin-bottom:20px;border-bottom:2px solid #C8A96A;padding-bottom:10px">
+      <h2 style="margin:0;color:#C8A96A">준보석 ${channel}</h2>
+      <p style="margin:4px 0;color:#888;font-size:12px">${today}</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+      ${Array.from(document.querySelectorAll('#catalog-grid .catalog-item')).map(item=>`
+        <div style="border:1px solid #eee;border-radius:8px;padding:8px;text-align:center;break-inside:avoid">
+          ${item.querySelector('img')?`<img src="${item.querySelector('img').src}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;margin-bottom:6px" crossorigin="anonymous">`:'<div style="width:100%;aspect-ratio:1;background:#f5f5f5;border-radius:6px;margin-bottom:6px"></div>'}
+          <div style="font-size:12px;font-weight:700">${item.querySelector('.catalog-id')?.textContent||''}</div>
+          ${item.querySelector('.catalog-price')?`<div style="font-size:13px;color:#C8A96A;font-weight:700">${item.querySelector('.catalog-price').textContent}</div>`:''}
+          ${item.querySelector('.catalog-note')?`<div style="font-size:10px;color:#888;margin-top:2px">${item.querySelector('.catalog-note').textContent}</div>`:''}
+        </div>`).join('')}
+    </div>`;
+
+  document.body.appendChild(printArea);
+  window.print();
+  setTimeout(()=>{printArea.remove();},1000);
 }
 
 // ================================
