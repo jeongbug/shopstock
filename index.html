@@ -483,6 +483,13 @@ window._fbReady = true;
       <button class="sheet-tab" id="order-tab-all" onclick="selectOrderTab('all')">전체</button>
     </div>
 
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input type="text" id="order-search" placeholder="고객명, 공장명, 모델번호로 검색..."
+        style="flex:1;padding:9px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--panel);font-size:13px;color:var(--text);font-family:'Noto Sans KR',sans-serif;outline:none"
+        oninput="filterOrders(this.value)" />
+      <button class="btn-sm" onclick="document.getElementById('order-search').value='';filterOrders('')">✕</button>
+    </div>
+
     <button class="btn-primary" onclick="showOrderForm()" style="margin-bottom:12px">+ 새 주문 등록</button>
     <div id="order-list"><div class="loading-state">불러오는 중...</div></div>
   </div>
@@ -2168,6 +2175,28 @@ function loadFactories(selectedFactories=[]){
       renderFactoryCheckboxes(selectedFactories);
     }
   });
+}
+
+function filterOrders(q){
+  if(!q){
+    renderOrders(getFilteredOrders());
+    return;
+  }
+  const lq=q.toLowerCase();
+  const filtered=orders.filter(o=>{
+    // 고객명 검색
+    if(o.customer&&o.customer.toLowerCase().includes(lq)) return true;
+    if(o.memo&&o.memo.toLowerCase().includes(lq)) return true;
+    // 아이템에서 공장명, 모델번호 검색
+    const items=orderItems.filter(x=>x.order_id===o.order_id);
+    return items.some(i=>
+      (i.factory&&i.factory.toLowerCase().includes(lq))||
+      (i.model_no&&i.model_no.toLowerCase().includes(lq))||
+      (i.category&&i.category.toLowerCase().includes(lq))||
+      (i.memo&&i.memo.toLowerCase().includes(lq))
+    );
+  });
+  renderOrders(filtered);
 }
 
 function selectOrderTab(tab){
