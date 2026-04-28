@@ -383,30 +383,27 @@ window._fbReady = true;
     <div class="adjust-panel" id="adjust-panel" style="display:none">
       <h3>가격 일괄 조정</h3>
       <div class="adjust-row">
-        <select id="adj-type">
+        <select id="adj-base" onchange="updateAdjustHint()">
+          <option value="self">현재 소비자가 기준</option>
+          <option value="original_price">판매단가 기준</option>
+        </select>
+      </div>
+      <div class="adjust-row" style="margin-top:6px">
+        <select id="adj-type" onchange="updateAdjustHint()">
+          <option value="multiply">× 배율</option>
           <option value="pct-up">% 인상</option>
           <option value="pct-down">% 인하</option>
           <option value="fixed-up">금액 인상</option>
           <option value="fixed-down">금액 인하</option>
-          <option value="multiply">배율 (×)</option>
         </select>
-        <input type="number" id="adj-val" value="10" min="0" step="0.1" style="width:70px" />
-      </div>
-      <div class="adjust-row" style="margin-top:6px">
+        <input type="number" id="adj-val" value="1.3" min="0" step="0.1" style="width:75px" oninput="updateAdjustHint()" />
         <select id="adj-field">
-          <option value="sale_price">소비자가</option>
-          <option value="wholesale_price">도매가</option>
-          <option value="popup_price">팝업가</option>
+          <option value="sale_price">→ 소비자가</option>
+          <option value="wholesale_price">→ 도매가</option>
         </select>
-        <select id="adj-base">
-          <option value="self">현재값 기준</option>
-          <option value="original_price">판매단가 기준</option>
-        </select>
-        <button class="btn-adjust" onclick="applyAdjust()">적용</button>
       </div>
-      <div style="font-size:11px;color:var(--text2);margin-top:6px">
-        예: 판매단가 기준 × 1.3 → 소비자가 = 판매단가 × 1.3
-      </div>
+      <div id="adj-hint" style="font-size:11px;color:#7A5C0A;margin-top:6px;padding:6px;background:#FFF8E1;border-radius:6px"></div>
+      <button class="btn-adjust" style="width:100%;margin-top:8px" onclick="applyAdjust()">선택한 제품에 적용</button>
     </div>
 
     <!-- 재고상태 일괄 변경 패널 -->
@@ -1657,7 +1654,10 @@ function renderProductItems(items){
         <div class="gallery-img">${p.photo?`<img src="${p.photo}" alt="" onerror="this.parentElement.innerHTML='💍'">`:'💍'}</div>
         <div class="gallery-body">
           <div class="gallery-id">${p.customer_id}</div>
-          <div class="gallery-price">₩${Number(p.sale_price||0).toLocaleString()}</div>
+          <div class="gallery-price">
+          ${p.original_price&&Number(p.original_price)>0?`<span style="font-size:10px;color:var(--text3)">기준 ₩${Number(p.original_price).toLocaleString()}</span><br>`:''}
+          ₩${Number(p.sale_price||0).toLocaleString()}
+        </div>
           <div class="gallery-badges">
             <span class="visible-badge ${p.visible_retail==='Y'?'badge-y':'badge-n'}">소매${p.visible_retail==='Y'?'노출':'숨김'}</span>
             <span class="visible-badge ${p.visible_wholesale==='Y'?'badge-y':'badge-n'}">도매${p.visible_wholesale==='Y'?'노출':'숨김'}</span>
@@ -1677,7 +1677,10 @@ function renderProductItems(items){
             <span class="stock-badge ${p.stock_status==='재고있음'?'stock-ok':p.stock_status==='재고없음'?'stock-no':'stock-end'}">${p.stock_status||''}</span>
           </div>
           ${p.factory_id?`<div class="p-factory">${p.factory_id}</div>`:''}
-          <div class="p-price">₩${Number(p.sale_price||0).toLocaleString()}</div>
+          <div class="p-price">
+            ${p.original_price&&Number(p.original_price)>0?`<span style="font-size:11px;color:var(--text3)">기준 ₩${Number(p.original_price).toLocaleString()} → </span>`:''}
+            ₩${Number(p.sale_price||0).toLocaleString()}
+          </div>
           ${p.description?`<div class="p-note">${p.description}</div>`:''}
         </div>
         <div class="p-actions">
@@ -1710,6 +1713,29 @@ function toggleAdjust(){
   adjVisible=!adjVisible;
   document.getElementById('adjust-panel').style.display=adjVisible?'block':'none';
   document.getElementById('adj-toggle').textContent=adjVisible?'닫기':'가격 조정';
+}
+
+function updateAdjustHint(){
+  const type=document.getElementById('adj-type').value;
+  const base=document.getElementById('adj-base').value;
+  const val=parseFloat(document.getElementById('adj-val').value)||0;
+  const hint=document.getElementById('adj-hint');
+  if(!hint)return;
+
+  // 선택된 제품 중 첫 번째로 예시 계산
+  const sample=filteredProducts.find(p=>p.selected);
+  if(!sample){hint.textContent='제품을 먼저 선택하면 예시가 표시됩니다';return;}
+
+  const basePrice=base==='original_price'?Number(sample.original_price||0):Number(sample.sale_price||0);
+  let newPrice=0;
+  if(type==='multiply') newPrice=Math.round(basePrice*val);
+  else if(type==='pct-up') newPrice=Math.round(basePrice*(1+val/100));
+  else if(type==='pct-down') newPrice=Math.round(basePrice*(1-val/100));
+  else if(type==='fixed-up') newPrice=basePrice+val;
+  else if(type==='fixed-down') newPrice=basePrice-val;
+
+  const baseName=base==='original_price'?'판매단가':'소비자가';
+  hint.textContent=`예시: ${baseName} ₩${basePrice.toLocaleString()} → ₩${newPrice.toLocaleString()}`;
 }
 
 function applyAdjust(){
