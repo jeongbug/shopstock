@@ -1978,6 +1978,8 @@ function saveProductPhoto(id){
       // 1. 로컬 캐시 즉시 업데이트 → 목록에 바로 반영
       const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
       if(p) p.photo=url;
+      const p2=products.find(x=>String(x.customer_id)===String(id));
+      if(p2) p2.photo=url;
       delete pendingPhotoData[id];
       renderProductItems(filteredProducts);
       showToast('✓ 사진 저장 완료');
