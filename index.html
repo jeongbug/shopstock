@@ -2178,16 +2178,15 @@ function loadFactories(selectedFactories=[]){
 }
 
 function filterOrders(q){
+  const tabFiltered=getFilteredOrders();
   if(!q){
-    renderOrders(getFilteredOrders());
+    renderOrders(tabFiltered);
     return;
   }
   const lq=q.toLowerCase();
-  const filtered=orders.filter(o=>{
-    // 고객명 검색
+  const result=tabFiltered.filter(o=>{
     if(o.customer&&o.customer.toLowerCase().includes(lq)) return true;
     if(o.memo&&o.memo.toLowerCase().includes(lq)) return true;
-    // 아이템에서 공장명, 모델번호 검색
     const items=orderItems.filter(x=>x.order_id===o.order_id);
     return items.some(i=>
       (i.factory&&i.factory.toLowerCase().includes(lq))||
@@ -2196,7 +2195,7 @@ function filterOrders(q){
       (i.memo&&i.memo.toLowerCase().includes(lq))
     );
   });
-  renderOrders(filtered);
+  renderOrders(result);
 }
 
 function selectOrderTab(tab){
@@ -2205,6 +2204,8 @@ function selectOrderTab(tab){
     const btn=document.getElementById('order-tab-'+t);
     if(btn)btn.classList.toggle('active',t===tab);
   });
+  const searchEl=document.getElementById('order-search');
+  if(searchEl) searchEl.value='';
   loadOrders();
 }
 
