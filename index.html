@@ -2807,47 +2807,9 @@ function closeOrderItemModal(){
   loadOrders();
 }
 
-async function exportCatalog(){
-  showToast('PDF 준비 중...');
-
-  // 현재 카탈로그 아이템 수집
+function exportCatalog(){
   const items=Array.from(document.querySelectorAll('#catalog-grid .catalog-item'));
   if(!items.length){showToast('카탈로그 항목이 없습니다');return;}
-
-  // 이미지를 base64로 변환
-  async function imgToBase64(src){
-    return new Promise(resolve=>{
-      const img=new Image();
-      img.crossOrigin='anonymous';
-      img.onload=()=>{
-        const canvas=document.createElement('canvas');
-        canvas.width=img.width;canvas.height=img.height;
-        canvas.getContext('2d').drawImage(img,0,0);
-        try{resolve(canvas.toDataURL('image/jpeg',0.8));}
-        catch{resolve('');}
-      };
-      img.onerror=()=>resolve('');
-      img.src=src+'&t='+Date.now();
-    });
-  }
-
-  // 모든 이미지 변환
-  const itemsData=await Promise.all(items.map(async item=>{
-    const imgEl=item.querySelector('img');
-    const base64=imgEl?await imgToBase64(imgEl.src):'';
-    return {
-      id:item.querySelector('.catalog-id')?.textContent||'',
-      price:item.querySelector('.catalog-price')?.textContent||'',
-      note:item.querySelector('.catalog-note')?.textContent||'',
-      img:base64
-    };
-  }));
-
-  // 프린트 영역 생성
-  let printArea=document.getElementById('print-area');
-  if(printArea)printArea.remove();
-  printArea=document.createElement('div');
-  printArea.id='print-area';
 
   let printStyle=document.getElementById('print-style');
   if(!printStyle){
@@ -2858,37 +2820,46 @@ async function exportCatalog(){
         body > *:not(#print-area){display:none!important;}
         #print-area{display:block!important;position:static!important;}
         @page{margin:10mm;}
+        #print-area img{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
       }
     `;
     document.head.appendChild(printStyle);
   }
 
+  let printArea=document.getElementById('print-area');
+  if(printArea)printArea.remove();
+  printArea=document.createElement('div');
+  printArea.id='print-area';
+  printArea.style.cssText='background:white;padding:20px;font-family:sans-serif;display:none';
+
   const channel=currentCatalogChannel==='retail'?'소매 카탈로그':'도매 카탈로그';
   const today=new Date().toLocaleDateString('ko-KR');
 
-  printArea.style.cssText='background:white;padding:20px;font-family:sans-serif;display:none';
   printArea.innerHTML=`
     <div style="text-align:center;margin-bottom:16px;border-bottom:2px solid #C8A96A;padding-bottom:10px">
       <h2 style="margin:0;color:#C8A96A">준보석 ${channel}</h2>
       <p style="margin:4px 0;color:#888;font-size:12px">${today}</p>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
-      ${itemsData.map(item=>`
+      ${items.map(item=>{
+        const imgEl=item.querySelector('img');
+        const imgSrc=imgEl?imgEl.src:'';
+        return `
         <div style="border:1px solid #eee;border-radius:6px;padding:6px;text-align:center;break-inside:avoid">
-          ${item.img?`<img src="${item.img}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;margin-bottom:4px">`
+          ${imgSrc?`<img src="${imgSrc}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:4px;margin-bottom:4px">`
             :'<div style="width:100%;aspect-ratio:1;background:#f5f5f5;border-radius:4px;margin-bottom:4px"></div>'}
-          <div style="font-size:11px;font-weight:700">${item.id}</div>
-          ${item.price?`<div style="font-size:12px;color:#C8A96A;font-weight:700">${item.price}</div>`:''}
-          ${item.note?`<div style="font-size:9px;color:#888;margin-top:2px">${item.note}</div>`:''}
-        </div>`).join('')}
+          <div style="font-size:11px;font-weight:700">${item.querySelector('.catalog-id')?.textContent||''}</div>
+          ${item.querySelector('.catalog-price')?`<div style="font-size:12px;color:#C8A96A;font-weight:700">${item.querySelector('.catalog-price').textContent}</div>`:''}
+          ${item.querySelector('.catalog-note')?`<div style="font-size:9px;color:#888;margin-top:2px">${item.querySelector('.catalog-note').textContent}</div>`:''}
+        </div>`;
+      }).join('')}
     </div>`;
 
   document.body.appendChild(printArea);
-  showToast('프린트 창을 열게요!');
   setTimeout(()=>{
     window.print();
     setTimeout(()=>printArea.remove(),2000);
-  },300);
+  },500);
 }
 
 // ================================
