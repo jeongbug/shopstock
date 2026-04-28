@@ -514,6 +514,15 @@ window._fbReady = true;
       <button class="modal-close" onclick="closeOrderItemModal()">✕</button>
       <p class="modal-title" id="order-item-title">제품 추가</p>
       <div class="form-group">
+        <label>작업 분류</label>
+        <select id="item-work-type">
+          <option value="제작">제작</option>
+          <option value="수리">수리</option>
+          <option value="상품화">상품화</option>
+          <option value="감정소">감정소</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label>제작 공장</label>
         <select id="item-factory">
           <option value="">선택...</option>
@@ -546,6 +555,10 @@ window._fbReady = true;
       <div class="form-group">
         <label>수량</label>
         <input type="number" id="item-quantity" value="1" min="1" />
+      </div>
+      <div class="form-group">
+        <label>출고 예정일</label>
+        <input type="date" id="item-due-date" />
       </div>
       <div class="form-group">
         <label>메모</label>
@@ -2234,8 +2247,9 @@ function renderOrderDetail(o,items){
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div style="flex:1">
             <div style="font-size:13px;font-weight:700">${item.factory||''} ${item.model_no?'— '+item.model_no:''}</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px">${item.category||''} ${item.base_material?'/ '+item.base_material:''} ${item.plating&&item.plating!=='없음'?'/ '+item.plating:''}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">${item.work_type||'제작'} · ${item.category||''} ${item.base_material?'/ '+item.base_material:''} ${item.plating&&item.plating!=='없음'?'/ '+item.plating:''}</div>
             ${item.stone_info?`<div style="font-size:12px;color:var(--text2)">${item.stone_info}</div>`:''}
+            ${item.due_date?`<div style="font-size:11px;color:var(--blue,#1A3A6B);margin-top:2px">📅 출고예정: ${item.due_date}</div>`:''}
             ${item.memo?`<div style="font-size:11px;color:var(--text3);margin-top:4px">${item.memo}</div>`:''}
             <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
               <span class="order-status status-${item.status}">${item.status}</span>
@@ -2301,6 +2315,8 @@ function fillOrderItemForm(orderId,itemId){
       platingSelect.value=item.plating||'없음';
       document.getElementById('item-stone-info').value=item.stone_info||'';
       document.getElementById('item-quantity').value=item.quantity||1;
+      document.getElementById('item-work-type').value=item.work_type||'제작';
+      document.getElementById('item-due-date').value=item.due_date||'';
       document.getElementById('item-memo').value=item.memo||'';
       document.getElementById('item-status').value=item.status||'주문접수';
     }
@@ -2372,6 +2388,8 @@ async function submitOrderItem(){
       plating:document.getElementById('item-plating').value,
       stone_info:document.getElementById('item-stone-info').value,
       quantity:document.getElementById('item-quantity').value,
+      work_type:document.getElementById('item-work-type').value,
+      due_date:document.getElementById('item-due-date').value,
       memo:document.getElementById('item-memo').value,
       status:document.getElementById('item-status').value,
       order_image:orderImgUrl,
