@@ -1975,25 +1975,25 @@ function saveProductPhoto(id){
 
   uploadToFirebase(photo,fileName)
     .then(url=>{
-      // Realtime Database에 URL 저장 (CORS 없음)
-      return fetch(`${RTDB_URL}/photo_urls/${currentSheet}_${id}.json`,{
-        method:'PUT',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({url,sheet:currentSheet,id:String(id),timestamp:Date.now()})
-      }).then(r=>r.json()).then(()=>url);
-    })
-    .then(url=>{
-      // Apps Script에는 action=savePhotoUrl로 짧은 파라미터만 GET으로 전송
-      return fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&action=savePhotoUrl&sheet='+encodeURIComponent(currentSheet)+'&id='+encodeURIComponent(id)+'&rtdb_key='+encodeURIComponent(currentSheet+'_'+id))
-        .then(r=>r.json()).then(()=>url);
-    })
-    .then(url=>{
+      // 1. 로컬 캐시 즉시 업데이트 → 목록에 바로 반영
       const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
       if(p) p.photo=url;
       delete pendingPhotoData[id];
+      renderProductItems(filteredProducts);
       showToast('✓ 사진 저장 완료');
       if(btn){btn.textContent='사진 저장';btn.disabled=false;}
       openDetail(id);
+
+      // 2. Realtime Database에 URL 저장 (백그라운드)
+      fetch(`${RTDB_URL}/photo_urls/${currentSheet}_${id}.json`,{
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({url,sheet:currentSheet,id:String(id),timestamp:Date.now()})
+      }).then(()=>{
+        // 3. Apps Script에 Sheets 저장 요청 (실패해도 무관)
+        fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&action=savePhotoUrl&sheet='+encodeURIComponent(currentSheet)+'&id='+encodeURIComponent(id)+'&rtdb_key='+encodeURIComponent(currentSheet+'_'+id))
+          .catch(()=>{}); // CORS 오류 무시
+      }).catch(()=>{});
     })
     .catch(err=>{
       showToast('업로드 실패: '+err.message);
