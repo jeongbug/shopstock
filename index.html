@@ -852,17 +852,6 @@ function loadMaterials(){
   }
 }
 
-function updateBaseDropdown(){
-  const el=document.getElementById('reg-base-material');
-  if(!el)return;
-  el.innerHTML='<option value="">선택...</option>';
-  metalsCache.forEach(m=>{
-    const o=document.createElement('option');
-    o.value=m.name;o.textContent=m.name;
-    el.appendChild(o);
-  });
-}
-
 function updatePlatingDropdown(){
   const el=document.getElementById('reg-plating');
   if(!el)return;
