@@ -1978,6 +1978,13 @@ function openDetail(id){
   const arr=filteredProducts.length?filteredProducts:products;
   const p=arr.find(x=>String(x.customer_id)===String(id));
   if(!p)return;
+
+  // Own_Products는 별도 상세창
+  if(currentSheet==='Own_Products'){
+    openOwnProductDetail(p);
+    return;
+  }
+
   document.getElementById('modal-title').textContent=p.customer_id;
   const fields=[
     {l:'고객번호',v:p.customer_id},
@@ -2025,6 +2032,112 @@ function openDetail(id){
       <button class="btn-primary" style="margin-top:8px" onclick="saveProductPhoto('${p.customer_id}')">사진 저장</button>
     </div>`;
   document.getElementById('modal').classList.add('open');
+}
+
+function openOwnProductDetail(p){
+  document.getElementById('modal-title').textContent=p.customer_id+' '+( p.factory_id||'');
+  document.getElementById('modal-body').innerHTML=`
+    ${p.photo?`<img src="${p.photo}" style="width:100%;height:160px;object-fit:cover;border-radius:10px;margin-bottom:10px" onerror="this.style.display='none'" alt="">`:''}
+    ${!p.photo?`<div style="margin-top:8px;padding:8px;background:#FFF3E0;border-radius:var(--radius-sm);font-size:12px;color:#E65100;margin-bottom:8px">📷 사진 없음</div>`:''}
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+      <div style="background:var(--surface);border-radius:var(--radius-sm);padding:8px">
+        <div style="font-size:10px;color:var(--text3)">소비자가</div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold)">₩${Number(p.sale_price||0).toLocaleString()}</div>
+      </div>
+      <div style="background:var(--surface);border-radius:var(--radius-sm);padding:8px">
+        <div style="font-size:10px;color:var(--text3)">도매가</div>
+        <div style="font-size:14px;font-weight:700">₩${Number(p.wholesale_price||0).toLocaleString()}</div>
+      </div>
+    </div>
+
+    <div style="font-size:12px;line-height:1.8;margin-bottom:8px">
+      ${p.brand?`<div><span style="color:var(--text3)">브랜드: </span>${p.brand}</div>`:''}
+      ${p.factory_id?`<div><span style="color:var(--text3)">공장: </span>${p.factory_id}</div>`:''}
+      ${p.base_material?`<div><span style="color:var(--text3)">소재: </span>${p.base_material}${p.plating&&p.plating!=='없음'?' / '+p.plating:''}</div>`:''}
+      ${p.base_weight?`<div><span style="color:var(--text3)">금 중량: </span>${p.base_weight}g</div>`:''}
+      ${p.stone_info?`<div><span style="color:var(--text3)">스톤: </span>${p.stone_info}</div>`:''}
+      ${p.cost_price?`<div><span style="color:var(--text3)">원가: </span>₩${Number(p.cost_price).toLocaleString()}</div>`:''}
+      ${p.order_ref?`<div><span style="color:var(--text3)">주문서: </span>${p.order_ref}</div>`:''}
+    </div>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      <span class="stock-badge ${p.stock_status==='재고있음'?'stock-ok':p.stock_status?.includes('재고없음')?'stock-no':'stock-end'}">${p.stock_status||''}</span>
+      ${p.visible_retail==='Y'?'<span style="font-size:11px;padding:2px 8px;background:#E8F5E9;color:#2E7D32;border-radius:10px">소매노출</span>':''}
+      ${p.visible_wholesale==='Y'?'<span style="font-size:11px;padding:2px 8px;background:#E3F2FD;color:#1565C0;border-radius:10px">도매노출</span>':''}
+      ${p.visible_popup==='Y'?'<span style="font-size:11px;padding:2px 8px;background:#FFF3E0;color:#E65100;border-radius:10px">팝업</span>':''}
+      ${p.visible_online==='Y'?'<span style="font-size:11px;padding:2px 8px;background:#F3E5F5;color:#6A1B9A;border-radius:10px">온라인</span>':''}
+    </div>
+
+    ${p.description?`<div style="font-size:12px;color:var(--text2);line-height:1.6;padding:8px;background:var(--surface);border-radius:var(--radius-sm);margin-bottom:8px">${p.description}</div>`:''}
+
+    <div class="modal-actions" style="flex-wrap:wrap">
+      <button onclick="editField('${p.customer_id}','sale_price','소비자가',${p.sale_price||0})">소비자가</button>
+      <button onclick="editField('${p.customer_id}','wholesale_price','도매가',${p.wholesale_price||0})">도매가</button>
+      <button onclick="editField('${p.customer_id}','cost_price','원가',${p.cost_price||0})">원가</button>
+      <button onclick="editField('${p.customer_id}','base_weight','금중량','${p.base_weight||''}')">금중량</button>
+      <button onclick="editField('${p.customer_id}','stone_info','스톤정보','${(p.stone_info||'').replace(/'/g,"\\'")}')">스톤정보</button>
+      <button onclick="editField('${p.customer_id}','description','메모','${(p.description||'').replace(/'/g,"\\'")}')">메모</button>
+      <button onclick="editOwnProductStock('${p.customer_id}','${p.stock_status||'재고있음'}')">재고상태</button>
+      <button onclick="editOwnProductChannels('${p.customer_id}')">판매채널</button>
+      <button onclick="uploadPhotoForProduct('${p.customer_id}')">사진 업로드</button>
+      ${userRole==='admin'?`<button class="btn-danger" onclick="deleteProduct('${p.customer_id}')">삭제</button>`:''}
+    </div>
+    <div id="photo-upload-area-${p.customer_id}" style="display:none;margin-top:10px">
+      <div class="upload-area">
+        <span id="photo-upload-label-${p.customer_id}">📷 사진 선택 (자동 압축)</span>
+        <input type="file" accept="image/*" onchange="handleProductPhotoUpload(this,'${p.customer_id}')" />
+        <img id="photo-upload-preview-${p.customer_id}" style="width:100%;max-height:120px;object-fit:cover;border-radius:var(--radius-sm);margin-top:8px;display:none" alt="" />
+      </div>
+      <button class="btn-primary" style="margin-top:8px" onclick="saveProductPhoto('${p.customer_id}')">사진 저장</button>
+    </div>`;
+  document.getElementById('modal').classList.add('open');
+}
+
+function editOwnProductStock(id, current){
+  const statuses=['재고있음','재고없음(재제작가능)','재고없음','단종'];
+  const options=statuses.map((s,i)=>`${i+1}. ${s}`).join('\n');
+  const sel=prompt(`현재: ${current}\n\n재고상태 선택:\n${options}`);
+  if(!sel)return;
+  const idx=parseInt(sel)-1;
+  if(isNaN(idx)||idx<0||idx>=statuses.length)return;
+  const newVal=statuses[idx];
+  api({action:'updateProduct',sheet:currentSheet,id,stock_status:newVal}).then(data=>{
+    if(data.status==='ok'){
+      const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
+      if(p){p.stock_status=newVal;renderProductItems(filteredProducts);}
+      openDetail(id);
+      showToast('✓ 재고상태 변경');
+    }
+  });
+}
+
+function editOwnProductChannels(id){
+  const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
+  if(!p)return;
+  const channels=[
+    {key:'visible_retail',label:'소매',val:p.visible_retail==='Y'},
+    {key:'visible_wholesale',label:'도매',val:p.visible_wholesale==='Y'},
+    {key:'visible_popup',label:'팝업',val:p.visible_popup==='Y'},
+    {key:'visible_online',label:'온라인',val:p.visible_online==='Y'},
+  ];
+  // 간단한 선택창
+  const current=channels.filter(c=>c.val).map(c=>c.label).join(', ')||'없음';
+  const sel=prompt(`현재 판매채널: ${current}\n\n변경할 채널 번호 입력 (토글됩니다):\n${channels.map((c,i)=>`${i+1}. ${c.label} (현재: ${c.val?'✓':'✗'})`).join('\n')}`);
+  if(!sel)return;
+  const idx=parseInt(sel)-1;
+  if(isNaN(idx)||idx<0||idx>=channels.length)return;
+  const ch=channels[idx];
+  const newVal=ch.val?'N':'Y';
+  const params={action:'updateProduct',sheet:currentSheet,id};
+  params[ch.key]=newVal;
+  api(params).then(data=>{
+    if(data.status==='ok'){
+      if(p) p[ch.key]=newVal;
+      openDetail(id);
+      showToast(`✓ ${ch.label} ${newVal==='Y'?'노출':'숨김'}`);
+    }
+  });
 }
 
 
