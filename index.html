@@ -762,7 +762,10 @@ let metalsCache=[];
 let platingsCache=[];
 
 function onFactoryChange(val){
-  document.getElementById('reg-factory').value=val;
+  const hidden=document.getElementById('reg-factory-hidden');
+  if(hidden) hidden.value=val;
+  const factory=document.getElementById('reg-factory');
+  if(factory) factory.value=val;
 }
 
 function autoGenModelNo(){
@@ -1105,7 +1108,7 @@ function renderRegForm(sheet){
         <select id="reg-factory-select" onchange="onFactoryChange(this.value)">
           <option value="">선택...</option>
         </select>
-        <input type="hidden" id="reg-factory" />
+        <input type="hidden" id="reg-factory-hidden" />
       </div>
       <div class="form-group">
         <label>모델번호 <button type="button" onclick="autoGenModelNo()" style="padding:2px 8px;font-size:11px;background:var(--gold);border:none;border-radius:4px;color:#fff;cursor:pointer;margin-left:6px">자동생성</button></label>
@@ -1140,7 +1143,7 @@ function renderRegForm(sheet){
         <label>판매 채널</label>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
           <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" id="ch-retail" value="retail" checked /> 소매</label>
-          <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" id="ch-wholesale" value="wholesale" /> 도매</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" id="ch-wholesale" value="wholesale" checked /> 도매</label>
           <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" id="ch-popup" value="popup" /> 팝업</label>
           <label style="display:flex;align-items:center;gap:4px;font-size:13px"><input type="checkbox" id="ch-online" value="online" /> 온라인</label>
         </div>
@@ -1336,7 +1339,7 @@ function registerProduct(){
 
     const params={
       action:'addProduct',sheet,category,
-      factory_id:getVal('reg-factory')||getVal('reg-factory-select'),
+      factory_id:getVal('reg-factory-hidden')||getVal('reg-factory-select')||getVal('reg-factory'),
       model_no:getVal('reg-model-no')||'',
       description:getVal('reg-desc'),
       photo:photoUrl||'',
