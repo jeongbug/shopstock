@@ -99,6 +99,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .p-info{flex:1;min-width:0;cursor:pointer}
 .p-id{font-size:13px;font-weight:700}
 .p-factory{font-size:10px;color:var(--text3);font-family:monospace;margin-top:1px}
+.factory-no-badge{display:inline-block;font-size:11px;font-weight:700;color:#C07020;background:#FFF3E0;padding:2px 8px;border-radius:4px;font-family:monospace;letter-spacing:0.3px;border:1px solid #FFD580;margin-top:3px}
 .p-price{font-size:12px;font-weight:700;color:var(--gold);margin-top:2px}
 .p-note{font-size:11px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .p-actions{display:flex;flex-direction:column;gap:3px;flex-shrink:0}
@@ -1852,6 +1853,7 @@ function renderProductItems(items){
         <div class="gallery-img">${p.photo?`<img src="${p.photo}" alt="" onerror="this.parentElement.innerHTML='💍'">`:'💍'}</div>
         <div class="gallery-body">
           <div class="gallery-id">${p.customer_id}</div>
+          ${currentSheet==='Own_Products'&&p.model_no?`<div class="factory-no-badge" style="margin-bottom:2px">📦 ${p.model_no}</div>`:''}
           <div class="gallery-price">
           ${p.original_price&&Number(p.original_price)>0?`<span style="font-size:10px;color:var(--text3)">기준 ₩${Number(p.original_price).toLocaleString()}</span><br>`:''}
           ₩${Number(p.sale_price||0).toLocaleString()}
@@ -1874,7 +1876,8 @@ function renderProductItems(items){
             <span class="visible-badge ${p.visible_wholesale==='Y'?'badge-y':'badge-n'}">도매${p.visible_wholesale==='Y'?'노출':'숨김'}</span>
             <span class="stock-badge ${p.stock_status==='재고있음'?'stock-ok':p.stock_status==='재고없음'?'stock-no':'stock-end'}">${p.stock_status||''}</span>
           </div>
-          ${p.factory_id?`<div class="p-factory">${p.factory_id}</div>`:''}
+          ${currentSheet==='Own_Products'&&p.model_no?`<div class="factory-no-badge">📦 공장번호: ${p.model_no}</div>`:''}
+          ${p.factory_id?`<div class="p-factory">${currentSheet==='Own_Products'?'공장: ':''}${p.factory_id}</div>`:''}
           <div class="p-price">
             ${p.original_price&&Number(p.original_price)>0?`<span style="font-size:11px;color:var(--text3)">기준 ₩${Number(p.original_price).toLocaleString()} → </span>`:''}
             ₩${Number(p.sale_price||0).toLocaleString()}
@@ -2077,7 +2080,7 @@ function openDetail(id){
 }
 
 function openOwnProductDetail(p){
-  document.getElementById('modal-title').textContent=p.customer_id+' '+( p.factory_id||'');
+  document.getElementById('modal-title').textContent=p.customer_id+(p.model_no?' — '+p.model_no:'')+(p.factory_id?' ('+p.factory_id+')':'');
   document.getElementById('modal-body').innerHTML=`
     ${p.photo?`<img src="${p.photo}" style="width:100%;height:160px;object-fit:cover;border-radius:10px;margin-bottom:6px" onerror="this.style.display='none'" alt="">`:''}
     ${!p.photo?`<div style="margin-top:8px;padding:8px;background:#FFF3E0;border-radius:var(--radius-sm);font-size:12px;color:#E65100;margin-bottom:8px">📷 사진 없음</div>`:''}
@@ -2105,7 +2108,7 @@ function openOwnProductDetail(p){
     <div style="font-size:12px;line-height:1.8;margin-bottom:8px">
       ${p.brand?`<div><span style="color:var(--text3)">브랜드: </span>${p.brand}</div>`:''}
       ${p.factory_id?`<div><span style="color:var(--text3)">공장: </span>${p.factory_id}</div>`:''}
-      ${p.base_material?`<div><span style="color:var(--text3)">소재: </span>${p.base_material}${p.plating&&p.plating!=='없음'?' / '+p.plating:''}</div>`:''}
+      ${p.model_no?`<div style="margin:4px 0;padding:8px 12px;background:#FFF3E0;border-radius:var(--radius-sm);border-left:4px solid #C07020"><div style="font-size:10px;color:var(--text3);margin-bottom:2px">📦 공장번호 (주문 시 이 번호로 주문하세요)</div><div style="font-size:20px;font-weight:700;color:#C07020;font-family:monospace;letter-spacing:0.5px">${p.model_no}</div></div>`:''}      ${p.base_material?`<div><span style="color:var(--text3)">소재: </span>${p.base_material}${p.plating&&p.plating!=='없음'?' / '+p.plating:''}</div>`:''}
       ${p.base_weight?`<div><span style="color:var(--text3)">금 중량: </span>${p.base_weight}g</div>`:''}
       ${p.stone_info?`<div><span style="color:var(--text3)">스톤: </span>${p.stone_info}</div>`:''}
       ${p.cost_price?`<div><span style="color:var(--text3)">원가: </span>₩${Number(p.cost_price).toLocaleString()}</div>`:''}
@@ -2123,6 +2126,7 @@ function openOwnProductDetail(p){
     ${p.description?`<div style="font-size:12px;color:var(--text2);line-height:1.6;padding:8px;background:var(--surface);border-radius:var(--radius-sm);margin-bottom:8px">${p.description}</div>`:''}
 
     <div class="modal-actions" style="flex-wrap:wrap">
+      <button onclick="editField('${p.customer_id}','model_no','공장번호','${(p.model_no||'').replace(/'/g,"\\'")}')">📦 공장번호</button>
       <button onclick="editField('${p.customer_id}','sale_price','소비자가',${p.sale_price||0})">소비자가</button>
       <button onclick="editField('${p.customer_id}','wholesale_price','도매가',${p.wholesale_price||0})">도매가</button>
       <button onclick="editField('${p.customer_id}','cost_price','원가',${p.cost_price||0})">원가</button>
