@@ -1373,16 +1373,35 @@ function registerProduct(){
   const btn=document.getElementById('btn-reg');
   btn.textContent='등록 중...';btn.disabled=true;
 
-  const doRegister=(photoUrl)=>{
+  const doRegister=async(photoUrl)=>{
     // 판매채널 처리
     const retailChecked=document.getElementById('ch-retail')?.checked;
     const wholesaleChecked=document.getElementById('ch-wholesale')?.checked;
     const popupChecked=document.getElementById('ch-popup')?.checked;
     const onlineChecked=document.getElementById('ch-online')?.checked;
 
+    // factory_id: select에서 직접 읽기
+    const factoryId=document.getElementById('reg-factory-select')?.value||getVal('reg-factory')||'';
+
+    // 추가사진 Firebase 업로드
+    let imagesUrl='';
+    const extraImgList=extraImages['images']||[];
+    if(extraImgList.length){
+      btn.textContent='추가사진 업로드 중...';
+      const urls=[];
+      for(let i=0;i<extraImgList.length;i++){
+        btn.textContent=`추가사진 ${i+1}/${extraImgList.length}...`;
+        try{
+          const url=await uploadToFirebase(extraImgList[i],'img_'+Date.now()+'_'+i+'.jpg');
+          urls.push(url);
+        }catch(e){}
+      }
+      imagesUrl=urls.join(',');
+    }
+
     const params={
       action:'addProduct',sheet,category,
-      factory_id:getVal('reg-factory-hidden')||getVal('reg-factory-select')||getVal('reg-factory'),
+      factory_id:factoryId,
       model_no:getVal('reg-model-no')||'',
       description:getVal('reg-desc'),
       photo:photoUrl||'',
@@ -1417,6 +1436,7 @@ function registerProduct(){
       order_ref:getVal('reg-order-ref'),
       base_weight:getVal('reg-base-weight')||'',
       stone_info:getVal('reg-stone-info')||'',
+      images:imagesUrl,
     };
     api(params).then(data=>{
       btn.textContent='등록하기';btn.disabled=false;
@@ -2327,41 +2347,41 @@ function saveProductPhoto(id){
   if(!photo){showToast('사진을 먼저 선택하세요');return;}
   const btn=document.querySelector('#photo-upload-area-'+id+' .btn-primary');
   if(btn){btn.textContent='업로드 중...';btn.disabled=true;}
-  const fileName='products/'+id+'_'+Date.now()+'.jpg';
+  const fileName=id+'_'+Date.now()+'.jpg';
+  const RTDB='https://jewelry-stock-default-rtdb.asia-southeast1.firebasedatabase.app';
+  const rtdbKey=currentSheet+'_'+id;
 
-  uploadToFirebase(photo, fileName.replace('products/',''))
+  uploadToFirebase(photo, fileName)
     .then(url=>{
-      // 로컬 캐시 즉시 업데이트 (화면 반영)
+      // 1. 로컬 캐시 즉시 업데이트
       const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
       if(p) p.photo=url;
       const p2=products.find(x=>String(x.customer_id)===String(id));
       if(p2) p2.photo=url;
+      delete pendingPhotoData[id];
       renderProductItems(filteredProducts);
       showToast('✓ 사진 저장 완료');
       if(btn){btn.textContent='사진 저장';btn.disabled=false;}
       openDetail(id);
-      delete pendingPhotoData[id];
 
-      // Apps Script에 파일명만 짧게 전달 (GET 가능)
-      // Apps Script가 Firebase URL 조합해서 Sheets에 저장
-      const shortFileName=encodeURIComponent(id+'_'+Date.now()+'.jpg');
-      fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&action=savePhotoUrl&sheet='+encodeURIComponent(currentSheet)+'&id='+encodeURIComponent(id)+'&photo_url='+encodeURIComponent(url.substring(0,200)))
-        .catch(()=>{}); // 실패해도 무시 (로컬은 이미 업데이트됨)
-        
-      // 전체 URL은 별도로 Realtime Database에 저장해서 Apps Script가 나중에 읽어가도록
-      const RTDB='https://jewelry-stock-default-rtdb.asia-southeast1.firebasedatabase.app';
-      fetch(`${RTDB}/photo_urls/${currentSheet}_${id}.json`,{
+      // 2. RTDB에 URL 저장
+      return fetch(`${RTDB}/photo_urls/${rtdbKey}.json`,{
         method:'PUT',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({url,sheet:currentSheet,id:String(id),ts:Date.now()})
-      }).then(()=>{
-        // Apps Script에 RTDB 키만 짧게 전달
-        return fetch(cfg.url+'?key='+encodeURIComponent(cfg.key)+'&action=savePhotoUrl&sheet='+encodeURIComponent(currentSheet)+'&id='+encodeURIComponent(id)+'&rtdb_key='+encodeURIComponent(currentSheet+'_'+id));
-      }).catch(()=>{});
+      });
     })
-    .catch(err=>{
-      showToast('업로드 실패: '+err.message);
-      if(btn){btn.textContent='사진 저장';btn.disabled=false;}
+    .then(()=>{
+      // 3. Apps Script에 RTDB 키만 짧게 전달 → Sheets 업데이트
+      return fetch(cfg.url
+        +'?key='+encodeURIComponent(cfg.key)
+        +'&action=savePhotoUrl'
+        +'&sheet='+encodeURIComponent(currentSheet)
+        +'&id='+encodeURIComponent(id)
+        +'&rtdb_key='+encodeURIComponent(rtdbKey));
+    })
+    .catch(()=>{
+      // RTDB/Apps Script 실패해도 Firebase 업로드는 성공했으므로 무시
     });
 }
 
