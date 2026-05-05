@@ -885,7 +885,8 @@ function showToast(msg){
 }
 
 function api(params){
-  const hasLargeData=(params.photo&&(params.photo.startsWith('data:')||params.photo.length>200))||
+  const hasLargeData=
+    (params.photo&&params.photo.startsWith('data:'))||
     (params.order_image&&params.order_image.startsWith('data:'))||
     (params.product_images&&params.product_images.startsWith('data:'))||
     (params.images&&params.images.startsWith('data:'));
@@ -1404,7 +1405,7 @@ function registerProduct(){
       factory_id:factoryId,
       model_no:getVal('reg-model-no')||'',
       description:getVal('reg-desc'),
-      photo:photoUrl||'',
+      photo:'',  // 사진은 등록 후 별도로 저장
       sale_price:getVal('reg-sale-price'),
       stock_status:getVal('reg-stock'),
       visible_retail:retailChecked?'Y':(getVal('reg-visible-retail')||'N'),
@@ -1438,10 +1439,32 @@ function registerProduct(){
       stone_info:getVal('reg-stone-info')||'',
       images:imagesUrl,
     };
-    api(params).then(data=>{
+    api(params).then(async data=>{
       btn.textContent='등록하기';btn.disabled=false;
       if(data.status==='ok'){
-        showToast('✓ 등록 완료! 고객번호: '+data.customer_id);
+        const newId=data.customer_id;
+        showToast('✓ 등록 완료! 고객번호: '+newId);
+
+        // 사진이 있으면 RTDB → Apps Script로 저장
+        if(photoUrl){
+          const RTDB='https://jewelry-stock-default-rtdb.asia-southeast1.firebasedatabase.app';
+          const rtdbKey=sheet+'_'+newId;
+          try{
+            await fetch(`${RTDB}/photo_urls/${rtdbKey}.json`,{
+              method:'PUT',
+              headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({url:photoUrl,sheet,id:String(newId),ts:Date.now()})
+            });
+            await new Promise(r=>setTimeout(r,800));
+            await fetch(cfg.url
+              +'?key='+encodeURIComponent(cfg.key)
+              +'&action=savePhotoUrl'
+              +'&sheet='+encodeURIComponent(sheet)
+              +'&id='+encodeURIComponent(newId)
+              +'&rtdb_key='+encodeURIComponent(rtdbKey));
+          }catch(e){}
+        }
+
         compressedImageBase64='';extraImages={};
         clearRegForm(sheet);
       } else {
@@ -2342,7 +2365,7 @@ function handleProductPhotoUpload(inp,id){
   reader.readAsDataURL(file);
 }
 
-function saveProductPhoto(id){
+async function saveProductPhoto(id){
   const photo=pendingPhotoData[id];
   if(!photo){showToast('사진을 먼저 선택하세요');return;}
   const btn=document.querySelector('#photo-upload-area-'+id+' .btn-primary');
@@ -2351,38 +2374,57 @@ function saveProductPhoto(id){
   const RTDB='https://jewelry-stock-default-rtdb.asia-southeast1.firebasedatabase.app';
   const rtdbKey=currentSheet+'_'+id;
 
-  uploadToFirebase(photo, fileName)
-    .then(url=>{
-      // 1. 로컬 캐시 즉시 업데이트
-      const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
-      if(p) p.photo=url;
-      const p2=products.find(x=>String(x.customer_id)===String(id));
-      if(p2) p2.photo=url;
-      delete pendingPhotoData[id];
-      renderProductItems(filteredProducts);
-      showToast('✓ 사진 저장 완료');
-      if(btn){btn.textContent='사진 저장';btn.disabled=false;}
-      openDetail(id);
+  try{
+    // 1. Firebase Storage 업로드
+    const url=await uploadToFirebase(photo, fileName);
 
-      // 2. RTDB에 URL 저장
-      return fetch(`${RTDB}/photo_urls/${rtdbKey}.json`,{
-        method:'PUT',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({url,sheet:currentSheet,id:String(id),ts:Date.now()})
-      });
-    })
-    .then(()=>{
-      // 3. Apps Script에 RTDB 키만 짧게 전달 → Sheets 업데이트
-      return fetch(cfg.url
-        +'?key='+encodeURIComponent(cfg.key)
-        +'&action=savePhotoUrl'
-        +'&sheet='+encodeURIComponent(currentSheet)
-        +'&id='+encodeURIComponent(id)
-        +'&rtdb_key='+encodeURIComponent(rtdbKey));
-    })
-    .catch(()=>{
-      // RTDB/Apps Script 실패해도 Firebase 업로드는 성공했으므로 무시
+    // 2. 로컬 캐시 즉시 업데이트
+    const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
+    if(p) p.photo=url;
+    const p2=products.find(x=>String(x.customer_id)===String(id));
+    if(p2) p2.photo=url;
+    delete pendingPhotoData[id];
+    renderProductItems(filteredProducts);
+    if(btn){btn.textContent='Sheets 저장 중...';btn.disabled=true;}
+    openDetail(id);
+
+    // 3. RTDB에 URL 저장
+    await fetch(`${RTDB}/photo_urls/${rtdbKey}.json`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({url,sheet:currentSheet,id:String(id),ts:Date.now()})
     });
+
+    // 4. 잠시 대기 후 Apps Script 호출 (RTDB 전파 대기)
+    await new Promise(r=>setTimeout(r,1000));
+    
+    const asUrl=cfg.url
+      +'?key='+encodeURIComponent(cfg.key)
+      +'&action=savePhotoUrl'
+      +'&sheet='+encodeURIComponent(currentSheet)
+      +'&id='+encodeURIComponent(id)
+      +'&rtdb_key='+encodeURIComponent(rtdbKey);
+
+    let saved=false;
+    for(let attempt=0;attempt<3;attempt++){
+      try{
+        const res=await fetch(asUrl).then(r=>r.json());
+        if(res.status==='ok'){saved=true;break;}
+      }catch(e){}
+      await new Promise(r=>setTimeout(r,1500));
+    }
+
+    if(saved){
+      showToast('✓ 사진 저장 완료');
+    } else {
+      showToast('⚠️ 사진 업로드됨 (Sheets 저장 지연될 수 있음)');
+    }
+    if(btn){btn.textContent='사진 저장';btn.disabled=false;}
+
+  }catch(err){
+    showToast('업로드 실패: '+err.message);
+    if(btn){btn.textContent='사진 저장';btn.disabled=false;}
+  }
 }
 
 function quickToggleVisible(id, channel){
