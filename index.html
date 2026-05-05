@@ -998,24 +998,19 @@ function showMain(stats){
     if(el) renderGoldPrice(JSON.parse(cached), el);
   }
   setTimeout(()=>loadGoldPrice(), 300);
-  // 공장/소재 미리 캐시
-  setTimeout(()=>{
-    if(!factoriesCache.length){
-      api({action:'getFactories'}).then(data=>{
-        if(data.status==='ok') factoriesCache=data.data;
-      });
+  // 공장/소재 즉시 캐시 (등록 탭 열기 전에 준비)
+  api({action:'getFactories'}).then(data=>{
+    if(data.status==='ok'){
+      factoriesCache=data.data;
+      populateFactorySelect();
     }
-    if(!metalsCache.length){
-      api({action:'getMetals'}).then(data=>{
-        if(data.status==='ok') metalsCache=data.data;
-      });
-    }
-    if(!platingsCache.length){
-      api({action:'getPlatings'}).then(data=>{
-        if(data.status==='ok') platingsCache=data.data;
-      });
-    }
-  }, 500);
+  });
+  api({action:'getMetals'}).then(data=>{
+    if(data.status==='ok') metalsCache=data.data;
+  });
+  api({action:'getPlatings'}).then(data=>{
+    if(data.status==='ok') platingsCache=data.data;
+  });
 }
 
 function showLogin(){
@@ -1038,8 +1033,17 @@ function switchNav(v){
   if(v==='register'){
     loadStones();
     loadMaterials();
-    // 캐시가 있으면 즉시 공장 드롭다운 채우기
-    setTimeout(()=>populateFactorySelect(), 50);
+    // 캐시 있으면 즉시, 없으면 로드 후 채우기
+    if(factoriesCache.length){
+      populateFactorySelect();
+    } else {
+      api({action:'getFactories'}).then(data=>{
+        if(data.status==='ok'){
+          factoriesCache=data.data;
+          populateFactorySelect();
+        }
+      });
+    }
   }
   if(v==='orders'){loadOrders();loadMaterials();}
   if(v==='reference'){loadReferences();}
@@ -1466,6 +1470,7 @@ function registerProduct(){
         }
 
         compressedImageBase64='';extraImages={};
+        products=[];filteredProducts=[]; // 목록 캐시 초기화 → 다음 목록 탭 클릭시 새로 불러옴
         clearRegForm(sheet);
       } else {
         showToast('오류: '+(data.message||'등록 실패'));
