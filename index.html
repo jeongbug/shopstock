@@ -2494,10 +2494,17 @@ function editField(id,field,label,current){
     if(data.status==='ok'){
       const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
       if(p) p[field]=val;
+      const p2=products.find(x=>String(x.customer_id)===String(id));
+      if(p2) p2[field]=val;
       openDetail(id);
       renderProductItems(filteredProducts);
       showToast('✓ 수정 완료');
+    } else {
+      showToast('❌ 저장 실패: '+(data.message||'오류'));
     }
+  }).catch(err=>{
+    showToast('❌ 저장 실패 (네트워크 오류)');
+    console.error('editField 오류:', err);
   });
 }
 
