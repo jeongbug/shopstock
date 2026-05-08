@@ -1102,7 +1102,7 @@ function selectRegSheet(el,sheet){
 
 function clearRegForm(sheet){
   // 텍스트/숫자 입력값만 초기화
-  ['reg-factory','reg-model-no','reg-desc','reg-sale-price','reg-wholesale-price','reg-cost-price',
+  ['reg-factory','reg-factory-model','reg-model-no','reg-desc','reg-sale-price','reg-wholesale-price','reg-cost-price',
    'reg-popup-price','reg-order-ref','reg-set-number','reg-original-id','reg-modify-desc',
    'reg-title','reg-artist','reg-gems','reg-size','reg-cert','reg-size-weight',
    'reg-quantity','reg-origin','reg-base-weight','reg-stone-info','reg-brand'].forEach(id=>{
@@ -1160,7 +1160,11 @@ function renderRegForm(sheet){
         <input type="hidden" id="reg-factory-hidden" />
       </div>
       <div class="form-group">
-        <label>모델번호 <button type="button" onclick="autoGenModelNo()" style="padding:2px 8px;font-size:11px;background:var(--gold);border:none;border-radius:4px;color:#fff;cursor:pointer;margin-left:6px">자동생성</button></label>
+        <label>공장 모델번호 <span style="font-size:11px;color:var(--text3)">(공장에서 사용하는 번호: 150R, ORJ0275E 등)</span></label>
+        <input type="text" id="reg-factory-model" placeholder="예: 150R, ORJ0275E" />
+      </div>
+      <div class="form-group">
+        <label>우리 모델번호 <button type="button" onclick="autoGenModelNo()" style="padding:2px 8px;font-size:11px;background:var(--gold);border:none;border-radius:4px;color:#fff;cursor:pointer;margin-left:6px">자동생성</button></label>
         <input type="text" id="reg-model-no" placeholder="예: DA-001 (자동생성 또는 직접입력)" />
       </div>
       <div class="form-group"><label>브랜드</label><input type="text" id="reg-brand" placeholder="브랜드명" /></div>
@@ -1385,8 +1389,9 @@ function registerProduct(){
     const popupChecked=document.getElementById('ch-popup')?.checked;
     const onlineChecked=document.getElementById('ch-online')?.checked;
 
-    // factory_id: select에서 직접 읽기
-    const factoryId=document.getElementById('reg-factory-select')?.value||getVal('reg-factory')||'';
+    // factory_id: 공장 모델번호 (150R 등), factory_name: 공장 이름 (다공방 등)
+    const factoryId=getVal('reg-factory-model')||'';
+    const factoryName=document.getElementById('reg-factory-select')?.value||'';
 
     // 추가사진 Firebase 업로드
     let imagesUrl='';
@@ -1407,6 +1412,7 @@ function registerProduct(){
     const params={
       action:'addProduct',sheet,category,
       factory_id:factoryId,
+      factory_name:factoryName,
       model_no:getVal('reg-model-no')||'',
       description:getVal('reg-desc'),
       photo:'',  // 사진은 등록 후 별도로 저장
