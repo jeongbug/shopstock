@@ -99,7 +99,7 @@ body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text
 .p-info{flex:1;min-width:0;cursor:pointer}
 .p-id{font-size:13px;font-weight:700}
 .p-factory{font-size:10px;color:var(--text3);font-family:monospace;margin-top:1px}
-.factory-no-badge{display:inline-block;font-size:11px;font-weight:700;color:#C07020;background:#FFF3E0;padding:2px 8px;border-radius:4px;font-family:monospace;letter-spacing:0.3px;border:1px solid #FFD580;margin-top:3px}
+.factory-no-badge{display:inline-block;font-size:11px;font-weight:700;color:#C07020;background:#FFF3E0;padding:2px 8px;border-radius:4px;font-family:monospace;border:1px solid #FFD580;margin-top:3px}
 .p-price{font-size:12px;font-weight:700;color:var(--gold);margin-top:2px}
 .p-note{font-size:11px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .p-actions{display:flex;flex-direction:column;gap:3px;flex-shrink:0}
@@ -885,8 +885,7 @@ function showToast(msg){
 }
 
 function api(params){
-  const hasLargeData=
-    (params.photo&&params.photo.startsWith('data:'))||
+  const hasLargeData=(params.photo&&(params.photo.startsWith('data:')||params.photo.length>200))||
     (params.order_image&&params.order_image.startsWith('data:'))||
     (params.product_images&&params.product_images.startsWith('data:'))||
     (params.images&&params.images.startsWith('data:'));
@@ -998,19 +997,24 @@ function showMain(stats){
     if(el) renderGoldPrice(JSON.parse(cached), el);
   }
   setTimeout(()=>loadGoldPrice(), 300);
-  // 공장/소재 즉시 캐시 (등록 탭 열기 전에 준비)
-  api({action:'getFactories'}).then(data=>{
-    if(data.status==='ok'){
-      factoriesCache=data.data;
-      populateFactorySelect();
+  // 공장/소재 미리 캐시
+  setTimeout(()=>{
+    if(!factoriesCache.length){
+      api({action:'getFactories'}).then(data=>{
+        if(data.status==='ok') factoriesCache=data.data;
+      });
     }
-  });
-  api({action:'getMetals'}).then(data=>{
-    if(data.status==='ok') metalsCache=data.data;
-  });
-  api({action:'getPlatings'}).then(data=>{
-    if(data.status==='ok') platingsCache=data.data;
-  });
+    if(!metalsCache.length){
+      api({action:'getMetals'}).then(data=>{
+        if(data.status==='ok') metalsCache=data.data;
+      });
+    }
+    if(!platingsCache.length){
+      api({action:'getPlatings'}).then(data=>{
+        if(data.status==='ok') platingsCache=data.data;
+      });
+    }
+  }, 500);
 }
 
 function showLogin(){
@@ -1033,17 +1037,8 @@ function switchNav(v){
   if(v==='register'){
     loadStones();
     loadMaterials();
-    // 캐시 있으면 즉시, 없으면 로드 후 채우기
-    if(factoriesCache.length){
-      populateFactorySelect();
-    } else {
-      api({action:'getFactories'}).then(data=>{
-        if(data.status==='ok'){
-          factoriesCache=data.data;
-          populateFactorySelect();
-        }
-      });
-    }
+    // 캐시가 있으면 즉시 공장 드롭다운 채우기
+    setTimeout(()=>populateFactorySelect(), 50);
   }
   if(v==='orders'){loadOrders();loadMaterials();}
   if(v==='reference'){loadReferences();}
@@ -1102,7 +1097,7 @@ function selectRegSheet(el,sheet){
 
 function clearRegForm(sheet){
   // 텍스트/숫자 입력값만 초기화
-  ['reg-factory','reg-factory-model','reg-model-no','reg-desc','reg-sale-price','reg-wholesale-price','reg-cost-price',
+  ['reg-factory','reg-model-no','reg-desc','reg-sale-price','reg-wholesale-price','reg-cost-price',
    'reg-popup-price','reg-order-ref','reg-set-number','reg-original-id','reg-modify-desc',
    'reg-title','reg-artist','reg-gems','reg-size','reg-cert','reg-size-weight',
    'reg-quantity','reg-origin','reg-base-weight','reg-stone-info','reg-brand'].forEach(id=>{
@@ -1160,11 +1155,7 @@ function renderRegForm(sheet){
         <input type="hidden" id="reg-factory-hidden" />
       </div>
       <div class="form-group">
-        <label>공장 모델번호 <span style="font-size:11px;color:var(--text3)">(공장에서 사용하는 번호: 150R, ORJ0275E 등)</span></label>
-        <input type="text" id="reg-factory-model" placeholder="예: 150R, ORJ0275E" />
-      </div>
-      <div class="form-group">
-        <label>우리 모델번호 <button type="button" onclick="autoGenModelNo()" style="padding:2px 8px;font-size:11px;background:var(--gold);border:none;border-radius:4px;color:#fff;cursor:pointer;margin-left:6px">자동생성</button></label>
+        <label>모델번호 <button type="button" onclick="autoGenModelNo()" style="padding:2px 8px;font-size:11px;background:var(--gold);border:none;border-radius:4px;color:#fff;cursor:pointer;margin-left:6px">자동생성</button></label>
         <input type="text" id="reg-model-no" placeholder="예: DA-001 (자동생성 또는 직접입력)" />
       </div>
       <div class="form-group"><label>브랜드</label><input type="text" id="reg-brand" placeholder="브랜드명" /></div>
@@ -1382,40 +1373,19 @@ function registerProduct(){
   const btn=document.getElementById('btn-reg');
   btn.textContent='등록 중...';btn.disabled=true;
 
-  const doRegister=async(photoUrl)=>{
+  const doRegister=(photoUrl)=>{
     // 판매채널 처리
     const retailChecked=document.getElementById('ch-retail')?.checked;
     const wholesaleChecked=document.getElementById('ch-wholesale')?.checked;
     const popupChecked=document.getElementById('ch-popup')?.checked;
     const onlineChecked=document.getElementById('ch-online')?.checked;
 
-    // factory_id: 공장 모델번호 (150R 등), factory_name: 공장 이름 (다공방 등)
-    const factoryId=getVal('reg-factory-model')||'';
-    const factoryName=document.getElementById('reg-factory-select')?.value||'';
-
-    // 추가사진 Firebase 업로드
-    let imagesUrl='';
-    const extraImgList=extraImages['images']||[];
-    if(extraImgList.length){
-      btn.textContent='추가사진 업로드 중...';
-      const urls=[];
-      for(let i=0;i<extraImgList.length;i++){
-        btn.textContent=`추가사진 ${i+1}/${extraImgList.length}...`;
-        try{
-          const url=await uploadToFirebase(extraImgList[i],'img_'+Date.now()+'_'+i+'.jpg');
-          urls.push(url);
-        }catch(e){}
-      }
-      imagesUrl=urls.join(',');
-    }
-
     const params={
       action:'addProduct',sheet,category,
-      factory_id:factoryId,
-      factory_name:factoryName,
+      factory_id:getVal('reg-factory-hidden')||getVal('reg-factory-select')||getVal('reg-factory'),
       model_no:getVal('reg-model-no')||'',
       description:getVal('reg-desc'),
-      photo:'',  // 사진은 등록 후 별도로 저장
+      photo:photoUrl||'',
       sale_price:getVal('reg-sale-price'),
       stock_status:getVal('reg-stock'),
       visible_retail:retailChecked?'Y':(getVal('reg-visible-retail')||'N'),
@@ -1447,36 +1417,12 @@ function registerProduct(){
       order_ref:getVal('reg-order-ref'),
       base_weight:getVal('reg-base-weight')||'',
       stone_info:getVal('reg-stone-info')||'',
-      images:imagesUrl,
     };
-    api(params).then(async data=>{
+    api(params).then(data=>{
       btn.textContent='등록하기';btn.disabled=false;
       if(data.status==='ok'){
-        const newId=data.customer_id;
-        showToast('✓ 등록 완료! 고객번호: '+newId);
-
-        // 사진이 있으면 RTDB → Apps Script로 저장
-        if(photoUrl){
-          const RTDB='https://jewelry-stock-default-rtdb.asia-southeast1.firebasedatabase.app';
-          const rtdbKey=sheet+'_'+newId;
-          try{
-            await fetch(`${RTDB}/photo_urls/${rtdbKey}.json`,{
-              method:'PUT',
-              headers:{'Content-Type':'application/json'},
-              body:JSON.stringify({url:photoUrl,sheet,id:String(newId),ts:Date.now()})
-            });
-            await new Promise(r=>setTimeout(r,800));
-            await fetch(cfg.url
-              +'?key='+encodeURIComponent(cfg.key)
-              +'&action=savePhotoUrl'
-              +'&sheet='+encodeURIComponent(sheet)
-              +'&id='+encodeURIComponent(newId)
-              +'&rtdb_key='+encodeURIComponent(rtdbKey));
-          }catch(e){}
-        }
-
+        showToast('✓ 등록 완료! 고객번호: '+data.customer_id);
         compressedImageBase64='';extraImages={};
-        products=[];filteredProducts=[]; // 목록 캐시 초기화 → 다음 목록 탭 클릭시 새로 불러옴
         clearRegForm(sheet);
       } else {
         showToast('오류: '+(data.message||'등록 실패'));
@@ -1636,7 +1582,11 @@ function saveGoldPrice(){
       };
       localStorage.setItem('gold_price_cache',JSON.stringify(cacheData));
       loadGoldPrice();
+    } else {
+      showToast('저장 실패: '+(data.message||'서버 오류'));
     }
+  }).catch(err=>{
+    showToast('연결 실패: '+err.message);
   });
 }
 function renderFilterBar(sheet){
@@ -2162,7 +2112,7 @@ function openOwnProductDetail(p){
     <div style="font-size:12px;line-height:1.8;margin-bottom:8px">
       ${p.brand?`<div><span style="color:var(--text3)">브랜드: </span>${p.brand}</div>`:''}
       ${p.factory_id?`<div><span style="color:var(--text3)">공장: </span>${p.factory_id}</div>`:''}
-      ${p.model_no?`<div style="margin:4px 0;padding:8px 12px;background:#FFF3E0;border-radius:var(--radius-sm);border-left:4px solid #C07020"><div style="font-size:10px;color:var(--text3);margin-bottom:2px">📦 공장번호 (주문 시 이 번호로 주문하세요)</div><div style="font-size:20px;font-weight:700;color:#C07020;font-family:monospace;letter-spacing:0.5px">${p.model_no}</div></div>`:''}
+      ${p.model_no?`<div style="margin:4px 0;padding:8px 12px;background:#FFF3E0;border-radius:var(--radius-sm);border-left:4px solid #C07020"><div style="font-size:10px;color:var(--text3);margin-bottom:2px">📦 공장번호 (주문 시 이 번호로 주문)</div><div style="font-size:20px;font-weight:700;color:#C07020;font-family:monospace">${p.model_no}</div></div>`:''}
       ${p.base_material?`<div><span style="color:var(--text3)">소재: </span>${p.base_material}${p.plating&&p.plating!=='없음'?' / '+p.plating:''}</div>`:''}
       ${p.base_weight?`<div><span style="color:var(--text3)">금 중량: </span>${p.base_weight}g</div>`:''}
       ${p.stone_info?`<div><span style="color:var(--text3)">스톤: </span>${p.stone_info}</div>`:''}
@@ -2181,7 +2131,6 @@ function openOwnProductDetail(p){
     ${p.description?`<div style="font-size:12px;color:var(--text2);line-height:1.6;padding:8px;background:var(--surface);border-radius:var(--radius-sm);margin-bottom:8px">${p.description}</div>`:''}
 
     <div class="modal-actions" style="flex-wrap:wrap">
-      <button onclick="editField('${p.customer_id}','model_no','공장번호','${(p.model_no||'').replace(/'/g,"\\'")}')">📦 공장번호</button>
       <button onclick="editField('${p.customer_id}','sale_price','소비자가',${p.sale_price||0})">소비자가</button>
       <button onclick="editField('${p.customer_id}','wholesale_price','도매가',${p.wholesale_price||0})">도매가</button>
       <button onclick="editField('${p.customer_id}','cost_price','원가',${p.cost_price||0})">원가</button>
@@ -2376,66 +2325,34 @@ function handleProductPhotoUpload(inp,id){
   reader.readAsDataURL(file);
 }
 
-async function saveProductPhoto(id){
+function saveProductPhoto(id){
   const photo=pendingPhotoData[id];
   if(!photo){showToast('사진을 먼저 선택하세요');return;}
   const btn=document.querySelector('#photo-upload-area-'+id+' .btn-primary');
   if(btn){btn.textContent='업로드 중...';btn.disabled=true;}
   const fileName=id+'_'+Date.now()+'.jpg';
-  const RTDB='https://jewelry-stock-default-rtdb.asia-southeast1.firebasedatabase.app';
-  const rtdbKey=currentSheet+'_'+id;
 
-  try{
-    // 1. Firebase Storage 업로드
-    const url=await uploadToFirebase(photo, fileName);
-
-    // 2. 로컬 캐시 즉시 업데이트
-    const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
-    if(p) p.photo=url;
-    const p2=products.find(x=>String(x.customer_id)===String(id));
-    if(p2) p2.photo=url;
-    delete pendingPhotoData[id];
-    renderProductItems(filteredProducts);
-    if(btn){btn.textContent='Sheets 저장 중...';btn.disabled=true;}
-    openDetail(id);
-
-    // 3. RTDB에 URL 저장
-    await fetch(`${RTDB}/photo_urls/${rtdbKey}.json`,{
-      method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({url,sheet:currentSheet,id:String(id),ts:Date.now()})
+  uploadToFirebase(photo,fileName)
+    .then(url=>{
+      // Firebase URL을 Sheets에 직접 저장 (RTDB 우회 제거 — CORS 문제 방지)
+      return api({action:'updateProduct',sheet:currentSheet,id,photo:url})
+        .then(data=>{
+          if(data.status!=='ok') throw new Error(data.message||'Sheets 저장 실패');
+          const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
+          if(p) p.photo=url;
+          const p2=products.find(x=>String(x.customer_id)===String(id));
+          if(p2) p2.photo=url;
+          delete pendingPhotoData[id];
+          renderProductItems(filteredProducts);
+          showToast('✓ 사진 저장 완료');
+          if(btn){btn.textContent='사진 저장';btn.disabled=false;}
+          openDetail(id);
+        });
+    })
+    .catch(err=>{
+      showToast('업로드 실패: '+err.message);
+      if(btn){btn.textContent='사진 저장';btn.disabled=false;}
     });
-
-    // 4. 잠시 대기 후 Apps Script 호출 (RTDB 전파 대기)
-    await new Promise(r=>setTimeout(r,1000));
-    
-    const asUrl=cfg.url
-      +'?key='+encodeURIComponent(cfg.key)
-      +'&action=savePhotoUrl'
-      +'&sheet='+encodeURIComponent(currentSheet)
-      +'&id='+encodeURIComponent(id)
-      +'&rtdb_key='+encodeURIComponent(rtdbKey);
-
-    let saved=false;
-    for(let attempt=0;attempt<3;attempt++){
-      try{
-        const res=await fetch(asUrl).then(r=>r.json());
-        if(res.status==='ok'){saved=true;break;}
-      }catch(e){}
-      await new Promise(r=>setTimeout(r,1500));
-    }
-
-    if(saved){
-      showToast('✓ 사진 저장 완료');
-    } else {
-      showToast('⚠️ 사진 업로드됨 (Sheets 저장 지연될 수 있음)');
-    }
-    if(btn){btn.textContent='사진 저장';btn.disabled=false;}
-
-  }catch(err){
-    showToast('업로드 실패: '+err.message);
-    if(btn){btn.textContent='사진 저장';btn.disabled=false;}
-  }
 }
 
 function quickToggleVisible(id, channel){
@@ -2494,17 +2411,10 @@ function editField(id,field,label,current){
     if(data.status==='ok'){
       const p=filteredProducts.find(x=>String(x.customer_id)===String(id));
       if(p) p[field]=val;
-      const p2=products.find(x=>String(x.customer_id)===String(id));
-      if(p2) p2[field]=val;
       openDetail(id);
       renderProductItems(filteredProducts);
       showToast('✓ 수정 완료');
-    } else {
-      showToast('❌ 저장 실패: '+(data.message||'오류'));
     }
-  }).catch(err=>{
-    showToast('❌ 저장 실패 (네트워크 오류)');
-    console.error('editField 오류:', err);
   });
 }
 
